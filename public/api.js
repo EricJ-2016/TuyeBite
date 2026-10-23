@@ -162,6 +162,31 @@ window.policyHtml = (text, s = {}) => {
   return html;
 };
 
+// ---------- "A new version is ready" ----------
+// Change APP_VERSION here and in version.json together when uploading a new version.
+window.APP_VERSION = "2026-10-23.3";
+(() => {
+  let shown = false;
+  async function check() {
+    if (shown || document.hidden || !navigator.onLine) return;
+    try {
+      const r = await fetch("/version.json?t=" + Date.now(), { cache: "no-store" });
+      const v = (await r.json()).v;
+      if (v && v !== window.APP_VERSION) {
+        shown = true;
+        const bar = document.createElement("button");
+        bar.type = "button"; bar.className = "update-bar";
+        bar.innerHTML = "<b>A new version of Tuye Bites is ready.</b><span>Tap to refresh</span>";
+        bar.onclick = () => location.reload();
+        document.body.appendChild(bar);
+      }
+    } catch (e) {}
+  }
+  addEventListener("load", () => setTimeout(check, 3000));
+  document.addEventListener("visibilitychange", check);
+  setInterval(check, 15 * 6e4);
+})();
+
 // ---------- helpers shared by all pages ----------
 window.esc = s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
 window.money = n => "KES " + Number(n || 0).toLocaleString("en-KE");

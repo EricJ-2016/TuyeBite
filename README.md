@@ -23,7 +23,7 @@ Everyone logs in with a phone number and password. The main admin is created onc
 - **Menu:** food groups, choices and extras, up to 8 photos per food, "finished for today" switch, buying price and hotel (private), "ordered today" / "viewing now" numbers to encourage customers (never counted in sales).
 - **Selling:** Hot Deals (each food with its own price, start, end and optional quantity), discount codes, loyalty free delivery, order for later, big-order fee and maximum items, busy mode, delivery areas and fees, opening hours.
 - **Admin:** customers list and blocking fake-order numbers, reports (profit after buying cost and rider pay, best sellers, hotels, riders, ratings), end-of-day summary on WhatsApp, Excel download, backup download, activity history, phone alerts for new orders (Web Push).
-- **Customers' phones:** installable like an app (`manifest.webmanifest`, `sw.js`), "Remember my details" and "Not you? Clear".
+- **Customers' phones:** installable like an app (`manifest.webmanifest`, `sw.js`), bottom bar, My orders, "Your usual", order updates on the phone, works offline with the last menu, small photos to save data, Share with a friend's code, "new version" notice, English / Kiswahili (`public/lang.js`, switched on by an admin), "Remember my details" and "Not you? Clear".
 
 ## Testing on this computer
 
@@ -41,7 +41,7 @@ The `data` folder is never uploaded to GitHub.
 | `netlify/functions/api.mjs` | Netlify Functions | Connects the back office to Turso |
 | `dev-server.mjs` | This computer | Runs everything locally with a test database |
 
-Tables (created and updated automatically): `items`, `images`, `settings`, `users`, `orders`, `activity`, `blocked`, `discounts`, `push_subs`, `limits`.
+Tables (created and updated automatically): `items`, `images`, `settings`, `users`, `orders`, `activity`, `blocked`, `discounts`, `push_subs`, `customer_push`, `limits`.
 Photos are stored in the database (`images`), shrunk in the browser before upload. The phone-alert keys are made automatically and kept in `settings`.
 
 ## Netlify environment variables (when it goes online)
@@ -54,6 +54,22 @@ Photos are stored in the database (`images`), shrunk in the browser before uploa
 | `SETUP_CODE` | A code only the owner knows, to create the main admin and reset a forgotten password (mark as secret) |
 
 Secrets are only ever kept in Netlify, never in these files. Every push to the `main` branch on GitHub makes Netlify rebuild the site automatically.
+
+## Putting it on a (new) Netlify account
+
+1. Log in to Netlify, then **Add new project** (or **Add new site**), then **Import an existing project**, then **GitHub**, and choose **TUYE-BITES**.
+2. Netlify reads `netlify.toml` by itself (website folder `public`, back office `netlify/functions`). Leave the build settings as they are and tap **Deploy**.
+3. In **Site configuration**, then **Environment variables**, add the four values from the table above:
+   - Use the **same** Turso `DATABASE_URL` and `DATABASE_AUTH_TOKEN` to keep all the menu, orders, customers and logins. A new Turso database starts empty.
+   - Use the **same** `SESSION_SECRET` so nobody has to log in again (a new one just logs everyone out once).
+   - Use a `SETUP_CODE` only you know.
+4. In **Deploys**, tap **Trigger deploy**, then **Deploy site**, so the new values are used.
+5. If the new address is not `tuye-bites.netlify.app`, change the two `og:url` / `og:image` lines at the top of `public/index.html` to the new address (they make the WhatsApp preview picture).
+6. Open the new address, log in to `/admin.html`, and check Settings. Turn on phone alerts again on each phone (they belong to the old address).
+
+Each upload to GitHub makes Netlify publish again and uses some of the plan's credits, so save changes up and upload them together.
+When uploading a new version, change `APP_VERSION` in `public/api.js` and the number in `public/version.json` to the same new value:
+customers with the app open then see "A new version of Tuye Bites is ready".
 
 ## Before the first real order
 

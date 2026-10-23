@@ -797,6 +797,12 @@
         <label class="check"><input type="checkbox" id="swOn" ${s.swOn ? "checked" : ""}> Show the English / Kiswahili switch to customers</label>
         <p class="err" id="e14"></p><button class="btn" id="b14">Save</button></form></div>
 
+      <div class="box"><h3>Share Tuye Bites</h3><form class="form" id="shareF" novalidate>
+        <p class="hint">Customers can share your site on WhatsApp (from Help, My orders and after ordering). Choose a discount code their friends get,
+          for example a first-order code like WELCOME50. Make the code first under Discount codes.</p>
+        <label>Code for friends <select id="shCode"><option value="">No code (just share the link)</option></select></label>
+        <p class="err" id="e15"></p><button class="btn" id="b15">Save</button></form></div>
+
       <div class="box"><h3>Loyalty reward</h3><form class="form" id="loyF" novalidate>
         <label>Free delivery on every ... delivered order <input id="le" type="number" min="0" max="100" value="${s.loyaltyEvery}"><span class="hint">For example 10: every 10th order of the same phone number gets free delivery. 0 = off.</span></label>
         <p class="err" id="e8"></p><button class="btn" id="b8">Save</button></form></div>
@@ -873,6 +879,12 @@
     };
     ["#bOn", "#bInc", "#bPer"].forEach(id => $(id).addEventListener("input", bigExample)); bigExample();
     $("#bigF").onsubmit = e => { e.preventDefault(); save($("#b11"), $("#e11"), { bigOn: $("#bOn").checked, bigIncluded: $("#bInc").value, bigPerItem: $("#bPer").value, maxItems: $("#bMax").value }, "Big orders saved"); };
+    Api.discounts().then(({ discounts }) => {
+      const sel = $("#shCode");
+      if (!sel) return;
+      sel.insertAdjacentHTML("beforeend", discounts.filter(d => d.active).map(d => `<option value="${esc(d.code)}"${d.code === s.shareCode ? " selected" : ""}>${esc(d.code)} (${d.kind === "percent" ? d.value + "% off" : money(d.value) + " off"}${d.firstOnly ? ", first order" : ""})</option>`).join(""));
+    }).catch(() => {});
+    $("#shareF").onsubmit = e => { e.preventDefault(); save($("#b15"), $("#e15"), { shareCode: $("#shCode").value }, "Share setting saved"); };
     $("#swF").onsubmit = e => { e.preventDefault(); save($("#b14"), $("#e14"), { swOn: $("#swOn").checked }, "Kiswahili setting saved"); };
     $("#loyF").onsubmit = e => { e.preventDefault(); save($("#b8"), $("#e8"), { loyaltyEvery: $("#le").value }, "Loyalty reward saved"); };
     loadDiscounts();

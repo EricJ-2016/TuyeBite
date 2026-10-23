@@ -599,3 +599,12 @@ body::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-even
 .us-t b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .us-t span { color: var(--muted); font-size: .85rem; }
 .usual .btn { flex: none; }
+
+/* ---------- step 3: install card, share card, new version bar ---------- */
+.inst-card, .share-card { margin-top: 12px; background: #fff8ec; border: 1.5px dashed var(--amber); border-radius: 14px; padding: 10px 12px; display: grid; gap: 4px; text-align: left; }
+.inst-card span, .share-card span { color: var(--muted); font-size: .88rem; }
+.inst-card .btn, .share-card .btn { justify-self: start; margin-top: 4px; }
+.share-card { background: #f1fae9; border-color: var(--lime); }
+.update-bar { position: fixed; left: 12px; right: 12px; top: 12px; z-index: 400; max-width: 520px; margin: 0 auto; display: flex; align-items: center; gap: 10px; justify-content: space-between;
+  background: var(--plum); color: #fff; border: 0; border-radius: 14px; padding: 12px 16px; box-shadow: 0 12px 30px rgba(0, 0, 0, .3); font: inherit; text-align: left; cursor: pointer; }
+.update-bar span { background: #fff; color: var(--plum); border-radius: 99px; padding: 4px 12px; font-weight: 800; font-size: .85rem; white-space: nowrap; }

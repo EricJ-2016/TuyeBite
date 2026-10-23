@@ -96,7 +96,13 @@ window.I18N = (() => {
     "View receipt": "Tazama risiti", "Hide receipt": "Ficha risiti", "Print": "Chapisha", "Order more": "Agiza zaidi",
     "Get updates on this phone": "Pata taarifa kwenye simu hii", "Turn on": "Washa", "Turn off": "Zima",
     "How was your food and delivery?": "Chakula na huduma vilikuwaje?", "Send rating": "Tuma maoni", "Tell us more (optional)": "Tueleze zaidi (si lazima)",
-    "Loading your order...": "Tunapakia oda yako...", "Back to the menu": "Rudi kwenye menyu"
+    "Loading your order...": "Tunapakia oda yako...", "Back to the menu": "Rudi kwenye menyu",
+    "Install Tuye Bites": "Sakinisha Tuye Bites", "Install the app": "Sakinisha programu",
+    "Follow your order and order faster next time, right from your home screen.": "Fuatilia oda yako na uagize haraka zaidi wakati ujao, moja kwa moja kutoka skrini yako ya mwanzo.",
+    "Share Tuye Bites": "Shiriki Tuye Bites", "Share Tuye Bites with a friend": "Mshirikishe rafiki Tuye Bites", "Enjoying Tuye Bites?": "Unafurahia Tuye Bites?",
+    "Tell a friend about us on WhatsApp.": "Mwambie rafiki kutuhusu kwa WhatsApp.", "Your friend gets code": "Rafiki yako anapata nambari",
+    "for a discount on their first order.": "ya punguzo kwenye oda yake ya kwanza.", "Share with a friend: they get code": "Mshirikishe rafiki: anapata nambari",
+    "on their first order.": "kwenye oda yake ya kwanza.", "A new version of Tuye Bites is ready.": "Toleo jipya la Tuye Bites liko tayari.", "Tap to refresh": "Gusa ili kusasisha"
   };
   // Pieces with numbers or names inside
   // "05-15 minutes" -> "dakika 05-15", "1 hour" -> "saa 1" (in Kiswahili the word comes first)

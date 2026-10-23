@@ -154,6 +154,10 @@
           ${o.items ? `<button class="btn small green" data-again>Order again</button>` : ""}</div></div>`;
     }).join("") : `<p class="empty">No orders on this phone yet.</p>`;
     $$("[data-again]", el).forEach(b => b.onclick = () => orderAgain(myCache[b.closest(".mo").dataset.t]));
+    if (list.length && settings.shareCode) {
+      $("#myList", el).insertAdjacentHTML("beforeend", `<div class="share-card"><b>Enjoying Tuye Bites?</b><span>Share with a friend: they get code <b>${esc(settings.shareCode)}</b> on their first order.</span><button type="button" class="btn green small" id="shareMine">Share</button></div>`);
+      $("#shareMine", el).onclick = shareApp;
+    }
   }
   // Puts the same foods and choices back in the cart
   function orderAgain(o) {
@@ -173,6 +177,15 @@
     if (added < o.items.length) toast("Some foods from that order are finished for today.");
   }
 
+  // ---------- share Tuye Bites: the friend gets the discount code the owner chose ----------
+  async function shareApp() {
+    const code = settings.shareCode;
+    const text = `Order hot fast food in Wote on Tuye Bites, delivered to your door.${code ? ` Use code ${code} for a discount on your first order.` : ""}`;
+    const url = location.origin + "/";
+    if (navigator.share) { try { await navigator.share({ title: "Tuye Bites", text, url }); return; } catch (e) { if (e.name === "AbortError") return; } }
+    window.open(waLink("", text + " " + url), "_blank");
+  }
+
   // ---------- Help (from the bottom bar) ----------
   function openHelp() {
     const t = v => { const [h, m] = v.split(":").map(Number); return `${h % 12 || 12}:${String(m).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`; };
@@ -185,8 +198,11 @@
         <div><b>How to pay</b><span>On M-Pesa Till ${esc(settings.till)}, before we deliver.</span></div>
         <div><b>Rules</b><span><a href="/policy.html">Privacy and refunds</a></span></div>
       </div>
+      <div class="share-card"><b>Share Tuye Bites</b><span>${settings.shareCode ? `Your friend gets code <b>${esc(settings.shareCode)}</b> for a discount on their first order.` : "Tell a friend about us on WhatsApp."}</span>
+        <button type="button" class="btn green small" id="shareHelp">Share</button></div>
       ${I18N.canSwitch(settings) ? `<div class="help-lang"><b>Language</b><div class="lang-btns"><button type="button" class="chip${I18N.lang() === "en" ? " on" : ""}" data-lang="en">English</button><button type="button" class="chip${I18N.lang() === "sw" ? " on" : ""}" data-lang="sw">Kiswahili</button></div></div>` : ""}`);
     $$("[data-lang]", el).forEach(b => b.onclick = () => { I18N.set(b.dataset.lang); closeSheet(); renderShop(); });
+    $("#shareHelp", el).onclick = shareApp;
   }
 
   // ---------- contact strip at the bottom ----------
@@ -684,7 +700,17 @@
         <div class="btns"><a class="btn wa" id="waBtn" target="_blank" rel="noopener" href="${esc(waLink(settings.whatsapp, text))}">Send my order on WhatsApp</a>
           <a class="btn plum" href="/t/${esc(o.token)}">Track my order</a></div>
         ${OrderUpdates.supported() && !OrderUpdates.isOn() ? `<button class="btn light wide" id="updBtn" style="margin-top:10px">Get order updates on this phone</button><p class="err" id="updErr"></p>` : ""}
-        <p class="hint">Tap "Send my order on WhatsApp" so we get it even faster.</p></div>`);
+        <p class="hint">Tap "Send my order on WhatsApp" so we get it even faster.</p>
+        ${!standalone() && (installEvent || /iphone|ipad|ipod/i.test(navigator.userAgent)) ? `<div class="inst-card"><b>Install Tuye Bites</b>
+          <span>Follow your order and order faster next time, right from your home screen.</span>
+          ${installEvent ? `<button class="btn amber small" id="instNow">Install the app</button>` : `<small>On iPhone: tap the Share button, then "Add to Home Screen".</small>`}</div>` : ""}
+        ${settings.shareCode ? `<button class="btn line wide" id="shareDone" style="margin-top:10px">Share Tuye Bites with a friend</button>` : ""}</div>`);
+    if ($("#instNow", el)) $("#instNow", el).onclick = async () => {
+      installEvent.prompt();
+      try { await installEvent.userChoice; } catch (e) {}
+      installEvent = null; $(".inst-card", el).remove();
+    };
+    if ($("#shareDone", el)) $("#shareDone", el).onclick = shareApp;
     if ($("#updBtn", el)) $("#updBtn", el).onclick = async () => {
       const b = $("#updBtn", el); b.disabled = true; b.textContent = "Please wait...";
       try { await OrderUpdates.turnOn(o.token); b.textContent = "Updates are on"; }
@@ -735,6 +761,7 @@
   const standalone = () => matchMedia("(display-mode: standalone)").matches || navigator.standalone;
   function showInstall() {
     if (standalone() || store.get("tb_noinstall", false)) return;
+    if (!store.get("tb_orders", []).length && store.get("tb_visits", 0) < 2) return;
     const ios = /iphone|ipad|ipod/i.test(navigator.userAgent);
     if (!installEvent && !ios) return;
     $("#install").innerHTML = `<div><b>Get the Tuye Bites app</b><small>${installEvent ? "Order faster from your home screen." : "Tap the Share button, then \"Add to Home Screen\"."}</small></div>
@@ -777,6 +804,7 @@
   }
   window.addEventListener("online", () => load());
   window.addEventListener("offline", () => { if (settings) offline(true); });
+  store.set("tb_visits", store.get("tb_visits", 0) + 1);
   // A shared food link (/f/<food>) opens that food straight away
   load().then(() => {
     const m = /food=([^&]+)/.exec(location.hash);
