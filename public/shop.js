@@ -229,6 +229,25 @@
   }
   setInterval(tickDeals, 1000);
 
+  // ---------- "Added to cart" pop-up under the cart button ----------
+  let addedTimer = null;
+  function showAdded(it, qty) {
+    let box = $("#addedPop");
+    if (!box) { box = document.createElement("div"); box.id = "addedPop"; box.setAttribute("role", "status"); document.body.appendChild(box); }
+    const n = cartLines().reduce((a, l) => a + l.qty, 0);
+    box.innerHTML = `<div class="ap-tick"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5 10 17 19 7"/></svg></div>
+      ${it.image ? `<img src="${esc(it.image)}" alt="">` : ""}
+      <div class="ap-t"><b>Added to cart</b><span>${qty > 1 ? qty + " x " : ""}${esc(it.name)}</span></div>
+      <button type="button" class="btn small green" id="apView">View cart (${n})</button>`;
+    box.style.top = ($(".top").getBoundingClientRect().bottom + 8) + "px";
+    box.classList.remove("show"); void box.offsetWidth; box.classList.add("show");
+    // the cart button gives a little jump
+    const cb = $("#cartBtn"); cb.classList.remove("bump"); void cb.offsetWidth; cb.classList.add("bump");
+    $("#apView").onclick = () => { box.classList.remove("show"); openCart(); };
+    clearTimeout(addedTimer);
+    addedTimer = setTimeout(() => box.classList.remove("show"), 2600);
+  }
+
   // ---------- sheets ----------
   // A pop-up may set "leaveCheck": it runs before the pop-up closes and can stop it (checkout asks first)
   let leaveCheck = null;
@@ -316,7 +335,7 @@
       if (miss) { $("#foodErr", el).textContent = `Please choose the ${miss.name}.`; return; }
       const key = it.id + "|" + JSON.stringify(ch), same = cart.find(l => l.key === key);
       if (same) same.qty = Math.min(20, same.qty + qty); else cart.push({ key, id: it.id, qty, choices: ch });
-      saveCart(); closeSheet(); toast(`${it.name} added to your cart`);
+      saveCart(); closeSheet(); showAdded(it, qty);
     };
     refresh();
   }
@@ -572,7 +591,7 @@
     if (e.target.closest(".add, .grab") && !it.options.length) {
       const key = it.id + "|{}", same = cart.find(l => l.key === key);
       if (same) same.qty = Math.min(20, same.qty + 1); else cart.push({ key, id: it.id, qty: 1, choices: {} });
-      saveCart(); toast(`${it.name} added to your cart`);
+      saveCart(); showAdded(it, 1);
     } else openFood(it);
   };
   $("#menu").addEventListener("click", onFoodClick);

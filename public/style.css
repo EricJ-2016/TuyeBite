@@ -511,3 +511,19 @@ body::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-even
 }
 @media (max-width: 350px) { .moto-chip b { display: none; } }
 @media (min-width: 760px) { .moto { width: 64px; height: 37px; } .moto-chip { padding: 3px 14px 3px 6px; } .moto-chip b { font-size: 1rem; } }
+
+/* ---------- "Added to cart" pop-up ---------- */
+#addedPop { position: fixed; right: 12px; z-index: 45; width: min(340px, calc(100vw - 24px)); display: flex; align-items: center; gap: 10px;
+  background: #fff; border-radius: 16px; padding: 10px 12px; box-shadow: 0 14px 40px rgba(43, 23, 32, .25); border-left: 5px solid var(--green);
+  opacity: 0; transform: translateY(-12px) scale(.96); pointer-events: none; transition: opacity .25s, transform .3s cubic-bezier(.2, 1.4, .4, 1); }
+#addedPop.show { opacity: 1; transform: none; pointer-events: auto; }
+#addedPop img { width: 44px; height: 44px; border-radius: 10px; object-fit: cover; flex: none; }
+.ap-tick { width: 30px; height: 30px; border-radius: 50%; background: var(--green); display: grid; place-items: center; flex: none; animation: apPop .4s .05s both; }
+.ap-t { flex: 1; min-width: 0; display: grid; }
+.ap-t b { color: var(--green); font-size: .98rem; }
+.ap-t span { font-size: .85rem; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+#addedPop .btn { flex: none; white-space: nowrap; }
+@keyframes apPop { from { transform: scale(0); } 70% { transform: scale(1.2); } }
+.cart-btn.bump { animation: cartBump .45s ease; }
+@keyframes cartBump { 30% { transform: scale(1.18) rotate(-6deg); } 60% { transform: scale(.95) rotate(3deg); } }
+@media (max-width: 420px) { #addedPop { right: 8px; width: calc(100vw - 16px); } #addedPop img { display: none; } }
