@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#CC010A">
+<meta name="robots" content="noindex">
+<title>My order | Tuye Bites</title>
+<link rel="icon" type="image/png" href="/favicon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Poppins:wght@700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="/style.css?v=23">
+<script src="/api.js?v=8"></script>
+<script src="/receipt.js?v=2"></script>
+<link rel="manifest" href="/manifest.webmanifest">
+</head>
+<body>
+<header class="top">
+  <div class="in">
+    <a class="brand" href="/">
+      <span class="logo" id="logo"></span>
+      <span><b><em>TUYE</em> <span>BITES</span></b><small>Fast food delivered in Wote</small></span>
+    </a>
+    <span class="grow"></span>
+    <a class="btn small light" href="/">Order more</a>
+  </div>
+</header>
+<main class="track" id="page"><p class="empty">Loading your order...</p></main>
+
+<script>
+(() => {
+  const token = decodeURIComponent(location.pathname.split("/t/")[1] || location.hash.slice(1) || "");
+  let settings = null, last = "";
+
+  const STEPS = [
+    ["new", "Order received", "We are checking your M-Pesa payment."],
+    ["confirmed", "Payment confirmed", "We are getting your food ready."],
+    ["on_the_way", "On the way", "Our rider is bringing your food."],
+    ["delivered", "Delivered", "Enjoy your meal."]
+  ];
+  const stepAt = o => ({ new: o.at, confirmed: o.paidAt, on_the_way: o.pickedAt, delivered: o.deliveredAt });
+
+  // Another phone opened this link: ask for the last 4 digits of the phone number used to order
+  function askPin(no) {
+    if ($("#pinForm")) return;
+    last = "";
+    $("#page").innerHTML = `<div class="card"><h2>Order <span style="color:var(--red)">${esc(no)}</span></h2>
+      <p>To keep orders private, type the <b>last 4 digits</b> of the phone number used for this order.</p>
+      <form class="form" id="pinForm" novalidate><input id="pin" inputmode="numeric" maxlength="4" autocomplete="off" placeholder="e.g. 5678"
+        style="font-size:1.6rem;letter-spacing:10px;text-align:center;font-weight:800">
+        <p class="err" id="pinErr"></p><button class="btn green wide">Open my order</button></form></div>
+      <a class="btn line wide" href="/">Go to the menu</a>`;
+    $("#pin").focus();
+    $("#pinForm").onsubmit = async e => {
+      e.preventDefault();
+      try {
+        const r = await Api.openOrder(token, $("#pin").value);
+        OrderKeys.set(token, r.key, true);
+        settings = r.settings; show(r.order);
+      } catch (err) { $("#pinErr").textContent = err.message; }
+    };
+  }
+  // Three days after delivery or cancellation only a short note is shown
+  function renderExpired(o) {
+    $("#page").innerHTML = `<div class="card"><h2>Order <span style="color:var(--red)">${esc(o.no)}</span></h2>
+      <div class="alert ${o.status === "delivered" ? "good" : "bad"}">${o.status === "delivered"
+        ? `Delivered on ${new Date(o.deliveredAt).toLocaleDateString("en-KE", { day: "numeric", month: "long" })}.`
+        : `Cancelled on ${new Date(o.cancelledAt).toLocaleDateString("en-KE", { day: "numeric", month: "long" })}.`}</div>
+      <p class="hint">The details of old orders are hidden to keep them private. For help, WhatsApp us and give the order number.</p></div>
+      <div class="track-btns"><a class="btn green" href="/">Order again</a>
+        <a class="btn wa" target="_blank" rel="noopener" href="${esc(waLink(settings.whatsapp, `Hello Tuye Bites, about my order ${o.no}: `))}">Ask us on WhatsApp</a></div>`;
+  }
+
+  // "today at 1:00 PM" in Kenya time
+  function whenText(t) {
+    const E = 3 * 36e5, d = new Date(t + E), h = d.getUTCHours(), m = String(d.getUTCMinutes()).padStart(2, "0");
+    const day = d.toISOString().slice(0, 10), today = new Date(Date.now() + E).toISOString().slice(0, 10);
+    const tomorrow = new Date(Date.now() + E + 864e5).toISOString().slice(0, 10);
+    return `${day === today ? "today" : day === tomorrow ? "tomorrow" : d.toLocaleDateString("en-KE", { day: "numeric", month: "short", timeZone: "UTC" })} at ${h % 12 || 12}:${m} ${h < 12 ? "AM" : "PM"}`;
+  }
+  function render(o) {
+    if (o.expired) return renderExpired(o);
+    const pos = { new: 0, payment_problem: 0, confirmed: 1, on_the_way: 2, delivered: 3 }[o.status];
+    const at = stepAt(o);
+    STEPS[1][2] = o.deliverAt ? "Paid. We will deliver at the time you chose."
+      : o.etaMin ? `We are getting your food ready. It takes about ${o.etaMin} minutes.`
+      : settings.deliveryTime ? `We are getting your food ready. Delivery in about ${settings.deliveryTime}.` : "We are getting your food ready.";
+    let top = "";
+    if (o.status === "payment_problem") top = `<div class="alert bad">${esc(o.problem)}<br><br>
+        Please check your M-Pesa message and type the correct code. You should have paid <b>${money(o.total)}</b> to Till <b>${esc(settings.till)}</b>.
+        <form class="form" id="codeForm" style="margin-top:10px"><input id="code" maxlength="12" placeholder="e.g. QJK7Y2B4XZ" style="text-transform:uppercase;letter-spacing:2px;font-weight:700">
+        <p class="err" id="codeErr"></p><button class="btn">Send the code</button></form></div>`;
+    else if (o.status === "cancelled") top = `<div class="alert bad">This order was cancelled. ${esc(o.cancelReason)}</div>`;
+    else if (o.status === "delivered") top = `<div class="alert good">Delivered at ${clock(o.deliveredAt)}. Thank you for ordering from Tuye Bites.</div>
+        ${o.rating ? `<p class="rated">You rated this order <span class="stars">${"&#9733;".repeat(o.rating)}<s>${"&#9733;".repeat(5 - o.rating)}</s></span></p>`
+          : `<form class="rate" id="rateForm"><b>How was your food and delivery?</b>
+            <div class="stars pick" role="radiogroup" aria-label="Stars">${[1, 2, 3, 4, 5].map(n => `<button type="button" data-s="${n}" aria-label="${n} star${n > 1 ? "s" : ""}">&#9733;</button>`).join("")}</div>
+            <input id="rateNote" maxlength="200" placeholder="Tell us more (optional)">
+            <p class="err" id="rateErr"></p><button class="btn green">Send rating</button></form>`}`;
+    // Orders for later only count down in the last 2 hours; before that the chosen time is shown above
+    else if (["confirmed", "on_the_way"].includes(o.status) && o.etaAt && !(o.deliverAt && o.etaAt - Date.now() > 2 * 36e5)) top = `<div class="eta"><small>Your food arrives in about</small><b id="etaLeft"></b><small>by ${clock(o.etaAt)}</small></div>`;
+    if (o.status === "on_the_way" && o.riderName) top += `<div class="alert info">${esc(o.riderName)} is bringing your food.
+        ${o.riderPhone ? `<br><a class="btn small green" style="margin-top:8px" href="tel:${esc(o.riderPhone)}">Call ${esc(o.riderName)}</a>` : ""}</div>`;
+
+    $("#page").innerHTML = `
+      <div class="card"><h2>Order <span style="color:var(--red)">${esc(o.no)}</span></h2>
+        <p class="hint">Placed ${timeAgo(o.at)} (${clock(o.at)}) | ${esc(o.area)}</p>
+        ${o.deliverAt && !["delivered", "cancelled"].includes(o.status) ? `<p class="alert info">Ordered for later: we deliver <b>${esc(whenText(o.deliverAt))}</b>.</p>` : ""}
+        ${top}
+        ${o.status === "cancelled" ? "" : `<ul class="steps-v">${STEPS.map(([k, t, d], i) =>
+          `<li class="${i < pos || o.status === "delivered" ? "done" : i === pos ? "now" : ""}">${t}
+            <small>${i <= pos && at[k] ? clock(at[k]) + " | " : ""}${esc(d)}</small></li>`).join("")}</ul>`}
+      </div>
+      ${["confirmed", "on_the_way", "delivered"].includes(o.status) ? `<div class="card rc-card"><h3>Your receipt</h3>
+        <p class="hint">Your payment is confirmed. Download your receipt to keep: the details on this page are hidden 3 days after delivery.</p>
+        <div class="rc-actions"><button class="btn green" id="rcPdf">Download PDF</button><button class="btn light" id="rcView">View receipt</button>
+          <button class="btn light" id="rcPrint">Print</button></div>
+        <div class="hidden" id="receiptBox" style="margin-top:14px"></div></div>` : ""}
+      <div class="card"><h3>Your food</h3>
+        ${o.items.map(l => `<div class="line"><div class="t"><b>${l.qty} x ${esc(l.name)}</b>${l.choices.length ? `<small>${esc(choiceText(l))}</small>` : ""}</div><b>${money(l.total)}</b></div>`).join("")}
+        <div class="totals"><div><span>Food</span><span>${money(o.foodTotal)}</span></div>
+          ${o.discount ? `<div><span>Discount (${esc(o.discountCode)})</span><span>- ${money(o.discount)}</span></div>` : ""}
+          <div><span>Delivery</span><span>${o.freeDelivery ? "FREE (loyalty reward)" : money(o.deliveryFee)}</span></div>
+          ${o.bigFee ? `<div><span>Big order</span><span>+ ${money(o.bigFee)}</span></div>` : ""}
+          <div class="big"><span>Total</span><span>${money(o.total)}</span></div></div>
+        <p class="hint">M-Pesa code: <b>${esc(o.mpesaCode)}</b><br>Deliver to: ${esc(o.area)} - ${esc(o.directions)}</p>
+      </div>
+      ${o.loyalty && o.status === "delivered" ? `<div class="card loyal">${o.loyalty.left === 0
+        ? `<b>Your next order has FREE delivery.</b> Thank you for ordering with us.`
+        : `<b>${o.loyalty.left} more order${o.loyalty.left === 1 ? "" : "s"}</b> and your next delivery is FREE.`}
+        <div class="dots">${Array.from({ length: o.loyalty.every }, (_, i) => `<i class="${i < o.loyalty.every - 1 - o.loyalty.left ? "on" : i === o.loyalty.every - 1 ? "gift" : ""}"></i>`).join("")}</div></div>` : ""}
+      <div class="track-btns"><button class="btn green" id="again">Order this again</button>
+        <a class="btn wa" target="_blank" rel="noopener" href="${esc(waLink(settings.whatsapp, `Hello Tuye Bites, about my order ${o.no}: `))}">Ask us on WhatsApp</a></div>
+      <p class="hint" style="text-align:center;margin-top:12px">This page updates by itself.</p>`;
+
+    tickEta(o);
+    // Order again: the same foods and choices go back into the cart on the menu page
+    $("#again").onclick = () => {
+      const cart = o.items.map(l => {
+        const choices = {};
+        for (const c of l.choices) (choices[c.group] ??= []).push(c.name);
+        return { key: l.id + "|" + JSON.stringify(choices), id: l.id, qty: l.qty, choices };
+      });
+      try { localStorage.setItem("tb_cart", JSON.stringify(cart)); } catch (e) {}
+      location.href = "/";
+    };
+    // Receipt after delivery: view it, download the PDF or print it
+    if ($("#rcPdf")) {
+      Receipt.loadLibs().catch(() => {});
+      $("#rcView").onclick = () => {
+        const box = $("#receiptBox");
+        if (box.classList.toggle("hidden")) { $("#rcView").textContent = "View receipt"; return; }
+        box.innerHTML = Receipt.html(o, settings);
+        $("#rcView").textContent = "Hide receipt";
+      };
+      $("#rcPdf").onclick = async () => {
+        const b = $("#rcPdf");
+        b.disabled = true; b.textContent = "Making PDF...";
+        try { Receipt.download(await Receipt.pdf(o, settings)); b.textContent = "Downloaded"; }
+        catch (e) { alert(e.message); }
+        setTimeout(() => { b.disabled = false; b.textContent = "Download PDF"; }, 2500);
+      };
+      $("#rcPrint").onclick = () => Receipt.print(o, settings);
+    }
+    const rf = $("#rateForm");
+    if (rf) {
+      let stars = 0;
+      $$("[data-s]", rf).forEach(b => b.onclick = () => {
+        stars = Number(b.dataset.s);
+        $$("[data-s]", rf).forEach(x => x.classList.toggle("on", Number(x.dataset.s) <= stars));
+      });
+      rf.onsubmit = async e => {
+        e.preventDefault();
+        if (!stars) { $("#rateErr").textContent = "Tap the stars first."; return; }
+        try { await Api.rate(token, stars, $("#rateNote").value); last = ""; await load(); }
+        catch (err) { $("#rateErr").textContent = err.message; }
+      };
+    }
+    const f = $("#codeForm");
+    if (f) f.onsubmit = async e => {
+      e.preventDefault();
+      try { const r = await Api.newCode(token, $("#code").value); settings = r.settings; last = ""; show(r.order); }
+      catch (err) { $("#codeErr").textContent = err.message; }
+    };
+  }
+  // Time left until the minutes given when the payment was confirmed, counting down every second
+  let etaOrder = null;
+  function tickEta(o) {
+    if (o) etaOrder = o;
+    const el = $("#etaLeft");
+    if (!el || !etaOrder || !etaOrder.etaAt) return;
+    const secs = Math.round((etaOrder.etaAt - Date.now()) / 1000);
+    const h = Math.floor(secs / 3600), m = Math.floor(secs / 60) % 60, sec = String(secs % 60).padStart(2, "0");
+    el.textContent = secs <= 0 ? "any moment now" : h ? `${h} h ${String(m).padStart(2, "0")} min ${sec} s` : `${m} min ${sec} s`;
+  }
+  setInterval(() => tickEta(), 1000);
+  function show(o) {
+    // Only redraw when something changed, so typing a code is not interrupted
+    const key = JSON.stringify(o);
+    if (key !== last) { last = key; render(o); }
+  }
+  async function load() {
+    try {
+      const r = await Api.track(token);
+      settings = r.settings;
+      $("#logo").innerHTML = logoHtml(settings);
+      if (r.needPin) askPin(r.no); else show(r.order);
+    } catch (e) {
+      if (!last) $("#page").innerHTML = `<div class="card"><h2>Order not found</h2><p>${esc(e.message)}</p><a class="btn" href="/">Go to the menu</a></div>`;
+    }
+  }
+  $("#logo").innerHTML = DEFAULT_LOGO;
+  load();
+  setInterval(() => { if (!document.hidden && !(document.activeElement && ["code", "rateNote", "pin"].includes(document.activeElement.id))) load(); }, 20000);
+})();
+</script>
+</body>
+</html>

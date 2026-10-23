@@ -1,0 +1,26 @@
+[build]
+  publish = "public"
+  functions = "netlify/functions"
+
+[build.environment]
+  NODE_VERSION = "22"
+
+[functions]
+  node_bundler = "esbuild"
+
+# Never let search engines list the admin page
+[[headers]]
+  for = "/admin.html"
+  [headers.values]
+    X-Robots-Tag = "noindex"
+
+# Customers' order links (/t/<secret>) open the tracking page
+[[redirects]]
+  from = "/t/*"
+  to = "/track.html"
+  status = 200
+
+[[headers]]
+  for = "/track.html"
+  [headers.values]
+    X-Robots-Tag = "noindex"
