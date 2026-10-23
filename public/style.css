@@ -561,3 +561,41 @@ body::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-even
 .mo-btns { display: flex; gap: 8px; margin-top: 4px; }
 
 .offline-bar { background: var(--ink); color: #fff; text-align: center; padding: 9px 16px; font-weight: 700; font-size: .88rem; }
+
+/* ---------- bottom bar on phones ---------- */
+.bnav { display: none; }
+@media (max-width: 759px) {
+  .bnav { display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 26; background: #fff; border-top: 1px solid var(--line);
+    box-shadow: 0 -4px 18px rgba(43, 23, 32, .08); padding: 4px 4px max(4px, env(safe-area-inset-bottom)); }
+  .bnav button { flex: 1; display: grid; justify-items: center; gap: 1px; border: 0; background: none; color: var(--muted); font: inherit; font-size: .7rem;
+    font-weight: 700; padding: 5px 2px; cursor: pointer; position: relative; border-radius: 12px; }
+  .bnav button.hidden { display: none; }
+  .bnav button.on { color: var(--red); }
+  .bnav button:active { background: var(--soft); }
+  .bn-badge { position: absolute; top: 2px; left: calc(50% + 6px); background: var(--green); color: #fff; font-style: normal; font-size: .64rem; font-weight: 800;
+    min-width: 17px; height: 17px; border-radius: 99px; display: grid; place-items: center; padding: 0 4px; border: 2px solid #fff; }
+  .bn-badge.hidden { display: none; }
+  .cartbar { bottom: calc(66px + env(safe-area-inset-bottom)); }
+  .install { bottom: calc(130px + env(safe-area-inset-bottom)); }
+  .cartbar.hidden + .install, .install:has(+ .cartbar.hidden) { bottom: calc(72px + env(safe-area-inset-bottom)); }
+  .site-foot { padding-bottom: 150px; }
+  #toast { bottom: calc(140px + env(safe-area-inset-bottom)); }
+}
+/* Help */
+.help-btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 14px; }
+.help-list { display: grid; gap: 10px; }
+.help-list div { background: var(--soft); border-radius: 12px; padding: 10px 12px; display: grid; gap: 2px; }
+.help-list span { color: var(--muted); font-size: .9rem; }
+.help-lang { margin-top: 14px; display: grid; gap: 6px; }
+.lang-btns { display: flex; gap: 8px; }
+.foot-lang button { background: none; border: 0; color: var(--amber); font: inherit; font-weight: 700; cursor: pointer; padding: 0 2px; }
+/* Your usual */
+.usual { display: flex; align-items: center; gap: 12px; background: #fff; border-radius: 18px; padding: 10px 12px; margin: 14px 0 0; box-shadow: var(--shadow);
+  border-left: 5px solid var(--green); }
+.usual.hidden { display: none; }
+.usual img { width: 54px; height: 54px; border-radius: 12px; object-fit: cover; flex: none; }
+.us-t { flex: 1; min-width: 0; display: grid; }
+.us-t small { color: var(--green); font-weight: 800; font-size: .74rem; letter-spacing: .5px; text-transform: uppercase; }
+.us-t b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.us-t span { color: var(--muted); font-size: .85rem; }
+.usual .btn { flex: none; }

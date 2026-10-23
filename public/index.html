@@ -17,7 +17,8 @@
 <link rel="icon" type="image/png" href="/favicon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Poppins:wght@700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=34">
+<link rel="stylesheet" href="style.css?v=35">
+<script src="/lang.js?v=2"></script>
 <script src="api.js?v=12"></script>
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="apple-touch-icon" href="/icon-180.png">
@@ -83,6 +84,8 @@
     <div class="hero-vis" id="heroVis" aria-label="Featured food"></div>
   </section>
 
+  <section class="usual hidden" id="usual"></section>
+
   <section class="deals hidden" id="deals"></section>
 
   <div class="tools">
@@ -95,10 +98,17 @@
 </main>
 <footer class="site-foot" id="siteFoot"></footer>
 
+<!-- Bottom bar on phones, like other apps -->
+<nav class="bnav" id="bnav" aria-label="Main">
+  <button type="button" data-nav="menu" class="on"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 11l9-7 9 7"/><path d="M5 10v10h14V10"/></svg><span>Menu</span></button>
+  <button type="button" data-nav="deals" class="hidden"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg><span>Hot Deals</span></button>
+  <button type="button" data-nav="orders"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5h11M9 12h11M9 19h11M4 5h.01M4 12h.01M4 19h.01"/></svg><span>My orders</span><i class="bn-badge hidden" id="bnBadge"></i></button>
+  <button type="button" data-nav="help"><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .9-1 1.7"/><path d="M12 17h.01"/></svg><span>Help</span></button>
+</nav>
 <div class="install hidden" id="install"></div>
 <button class="cartbar hidden" id="cartBar"><span id="cartBarCount"></span><span id="cartBarTotal"></span></button>
 <div id="sheets"></div>
 
-<script src="shop.js?v=24"></script>
+<script src="shop.js?v=25"></script>
 </body>
 </html>

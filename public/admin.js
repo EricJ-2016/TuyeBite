@@ -393,7 +393,8 @@
     const groups = [...new Set([...settings.categories, ...menu.map(i => i.category)])];
     const list = menu.filter(i => menuGroup === "All" || i.category === menuGroup);
     const off = menu.filter(i => !i.available).length;
-    $("#page").innerHTML = `<div class="bar"><h2>Menu</h2><button class="btn green" id="addFood">Add food</button></div>
+    const noSmall = menu.filter(i => i.image && i.thumb === i.image).length;
+    $("#page").innerHTML = `<div class="bar"><h2>Menu</h2>${noSmall ? `<button class="btn small light" id="mkSmall">Make small photos (${noSmall})</button>` : ""}<button class="btn green" id="addFood">Add food</button></div>
       <p class="hint" style="margin:-6px 0 12px">${menu.length} foods${off ? `, ${off} finished for today` : ""}. Switch a food off when it is finished; switch it on again tomorrow.</p>
       <div class="chips" style="margin-bottom:12px">${["All", ...groups].map(g => `<button class="chip${g === menuGroup ? " on" : ""}" data-g="${esc(g)}">${esc(g)}<span class="n">${g === "All" ? menu.length : menu.filter(i => i.category === g).length}</span></button>`).join("")}</div>
       <div class="box scroll">${list.length ? `<table class="tbl menu-tbl"><thead><tr><th></th><th>Food</th><th class="r">Selling</th><th class="r">Buying</th><th class="r">Profit</th><th>Available</th><th></th></tr></thead><tbody>
@@ -406,6 +407,19 @@
         : `<p class="empty">No foods yet. Tap "Add food".</p>`}</div>`;
     $$("[data-g]").forEach(b => b.onclick = () => { menuGroup = b.dataset.g; renderMenu(); });
     $("#addFood").onclick = () => editFood(null);
+    // Small copies of the photos for the customers' menu cards (foods saved before this existed)
+    if ($("#mkSmall")) $("#mkSmall").onclick = () => busy($("#mkSmall"), null, async () => {
+      const todo = menu.filter(i => i.image && i.thumb === i.image);
+      let n = 0;
+      for (const it of todo) {
+        const photos = await Promise.all(it.images.map(async src => ({ src, thumb: await shrinkSrc(src, 360, 0.7).catch(() => null) })));
+        const { id, image, images, thumb, createdAt, realToday, ...rest } = it;
+        await Api.saveItem(id, { ...rest, photos });
+        $("#mkSmall").textContent = `Please wait... ${++n} of ${todo.length}`;
+      }
+      toast(`Small photos made for ${n} food${n === 1 ? "" : "s"}`);
+      await viewMenu();
+    });
     $$("[data-edit]").forEach(b => b.onclick = () => editFood(menu.find(i => i.id === b.closest("tr").dataset.id)));
     $$("[data-share]").forEach(b => b.onclick = () => shareFood(menu.find(i => i.id === b.closest("tr").dataset.id)));
     $$("[data-av]").forEach(c => c.onchange = async () => {
@@ -776,6 +790,13 @@
         <p class="hint" id="bEx"></p>
         <p class="err" id="e11"></p><button class="btn" id="b11">Save big orders</button></form></div>
 
+      <div class="box"><h3>Kiswahili for customers</h3><form class="form" id="swF" novalidate>
+        <p class="hint">Customers can switch the site between English and Kiswahili (at the bottom of the site and in Help).
+          Please first check the Kiswahili words with someone you trust: open the preview, look through the menu, cart and checkout, and tell Claude what to change.</p>
+        <a class="btn light" href="/?lang=sw" target="_blank">Preview the site in Kiswahili</a>
+        <label class="check"><input type="checkbox" id="swOn" ${s.swOn ? "checked" : ""}> Show the English / Kiswahili switch to customers</label>
+        <p class="err" id="e14"></p><button class="btn" id="b14">Save</button></form></div>
+
       <div class="box"><h3>Loyalty reward</h3><form class="form" id="loyF" novalidate>
         <label>Free delivery on every ... delivered order <input id="le" type="number" min="0" max="100" value="${s.loyaltyEvery}"><span class="hint">For example 10: every 10th order of the same phone number gets free delivery. 0 = off.</span></label>
         <p class="err" id="e8"></p><button class="btn" id="b8">Save</button></form></div>
@@ -852,6 +873,7 @@
     };
     ["#bOn", "#bInc", "#bPer"].forEach(id => $(id).addEventListener("input", bigExample)); bigExample();
     $("#bigF").onsubmit = e => { e.preventDefault(); save($("#b11"), $("#e11"), { bigOn: $("#bOn").checked, bigIncluded: $("#bInc").value, bigPerItem: $("#bPer").value, maxItems: $("#bMax").value }, "Big orders saved"); };
+    $("#swF").onsubmit = e => { e.preventDefault(); save($("#b14"), $("#e14"), { swOn: $("#swOn").checked }, "Kiswahili setting saved"); };
     $("#loyF").onsubmit = e => { e.preventDefault(); save($("#b8"), $("#e8"), { loyaltyEvery: $("#le").value }, "Loyalty reward saved"); };
     loadDiscounts();
     // Hot Deals: every row is one food with its own price and time; new rows go at the bottom, nothing is replaced

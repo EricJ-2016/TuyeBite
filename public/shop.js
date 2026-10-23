@@ -112,10 +112,31 @@
       const live = list.filter(o => myCache[o.token] && ["new", "payment_problem", "confirmed", "on_the_way"].includes(myCache[o.token].status)).length;
       bar.innerHTML = `<span class="ob-ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5h11M9 12h11M9 19h11M4 5h.01M4 12h.01M4 19h.01"/></svg></span>
         <b>My orders</b>${live ? `<span class="ob-live">${live} in progress</span>` : `<span class="ob-n">${list.length}</span>`}<span class="ob-go">View</span>`;
+      $("#bnBadge").textContent = live || "";
+      $("#bnBadge").classList.toggle("hidden", !live);
     };
     draw();
     await fetchMine().catch(() => {});
     draw();
+    renderUsual();
+  }
+  // ---------- "Your usual": the last order again, one tap away ----------
+  function renderUsual() {
+    const box = $("#usual");
+    const last = myOrderList().map(x => myCache[x.token]).find(o => o && o.items && o.status !== "cancelled");
+    const lines = last ? last.items.filter(l => byId(l.id) && byId(l.id).available) : [];
+    box.classList.toggle("hidden", !lines.length);
+    if (!lines.length) return;
+    const price = lines.reduce((a, l) => {
+      const it = byId(l.id), ch = {};
+      for (const c of l.choices || []) (ch[c.group] ??= []).push(c.name);
+      return a + unitPrice(it, ch) * l.qty;
+    }, 0);
+    const pic = byId(lines[0].id);
+    box.innerHTML = `${pic && pic.image ? `<img src="${esc(pic.thumb || pic.image)}" alt="">` : ""}
+      <div class="us-t"><small>Your usual</small><b>${esc(lines.map(l => `${l.qty} x ${l.name}`).join(", "))}</b><span>${money(price)} + delivery</span></div>
+      <button type="button" class="btn green small" id="usualBtn">Order again</button>`;
+    $("#usualBtn").onclick = () => orderAgain(last);
   }
   async function openMyOrders() {
     const el = sheet(`<div class="head"><h2>My orders</h2><button class="x" aria-label="Close">&times;</button></div><div id="myList"><p class="empty">Loading your orders...</p></div>`);
@@ -123,13 +144,13 @@
     const list = myOrderList();
     $("#myList", el).innerHTML = list.length ? list.map(x => {
       const o = myCache[x.token];
-      if (!o) return `<div class="mo"><div class="mo-h"><b>${esc(x.no)}</b><small>${timeAgo(x.at)}</small></div><a class="btn small light" href="/t/${esc(x.token)}">Open</a></div>`;
+      if (!o) return `<div class="mo"><div class="mo-h"><b>${esc(x.no)}</b><small>${timeAgo(x.at)}</small></div><a class="btn small light" href="/t/${esc(x.token)}">Open order</a></div>`;
       const [label, kind] = o.expired ? ["Delivered", "done"] : STAGE[o.status] || [o.status, "wait"];
       const foods = o.items ? o.items.map(l => `${l.qty} x ${l.name}`).join(", ") : "";
       return `<div class="mo" data-t="${esc(x.token)}"><div class="mo-h"><b>${esc(o.no)}</b><span class="mo-st ${kind}">${esc(label)}</span></div>
         <small class="mo-when">${timeAgo(o.at)}${o.total ? " | " + money(o.total) : ""}</small>
         ${foods ? `<p class="mo-foods">${esc(foods)}</p>` : ""}
-        <div class="mo-btns"><a class="btn small plum" href="/t/${esc(x.token)}">${["confirmed", "on_the_way", "delivered"].includes(o.status) && !o.expired ? "Track and receipt" : "Open"}</a>
+        <div class="mo-btns"><a class="btn small plum" href="/t/${esc(x.token)}">${["confirmed", "on_the_way", "delivered"].includes(o.status) && !o.expired ? "Track and receipt" : "Open order"}</a>
           ${o.items ? `<button class="btn small green" data-again>Order again</button>` : ""}</div></div>`;
     }).join("") : `<p class="empty">No orders on this phone yet.</p>`;
     $$("[data-again]", el).forEach(b => b.onclick = () => orderAgain(myCache[b.closest(".mo").dataset.t]));
@@ -152,6 +173,22 @@
     if (added < o.items.length) toast("Some foods from that order are finished for today.");
   }
 
+  // ---------- Help (from the bottom bar) ----------
+  function openHelp() {
+    const t = v => { const [h, m] = v.split(":").map(Number); return `${h % 12 || 12}:${String(m).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`; };
+    const tel = settings.whatsapp;
+    const el = sheet(`<div class="head"><h2>Help</h2><button class="x" aria-label="Close">&times;</button></div>
+      <div class="help-btns"><a class="btn wa" target="_blank" rel="noopener" href="${esc(waLink(tel, "Hello Tuye Bites, "))}">WhatsApp us</a><a class="btn light" href="tel:${esc(tel)}">Call ${esc(tel)}</a></div>
+      <div class="help-list">
+        <div><b>When we are open</b><span>${settings.mode === "closed" ? "Closed for now" : settings.mode === "open" ? "Open now" : `Every day, ${t(settings.open)} to ${t(settings.close)}`}</span></div>
+        <div><b>Where we deliver</b><span>${settings.deliveryAreas.map(a => `${esc(a.name)} (${money(a.fee)})`).join(", ")}</span></div>
+        <div><b>How to pay</b><span>On M-Pesa Till ${esc(settings.till)}, before we deliver.</span></div>
+        <div><b>Rules</b><span><a href="/policy.html">Privacy and refunds</a></span></div>
+      </div>
+      ${I18N.canSwitch(settings) ? `<div class="help-lang"><b>Language</b><div class="lang-btns"><button type="button" class="chip${I18N.lang() === "en" ? " on" : ""}" data-lang="en">English</button><button type="button" class="chip${I18N.lang() === "sw" ? " on" : ""}" data-lang="sw">Kiswahili</button></div></div>` : ""}`);
+    $$("[data-lang]", el).forEach(b => b.onclick = () => { I18N.set(b.dataset.lang); closeSheet(); renderShop(); });
+  }
+
   // ---------- contact strip at the bottom ----------
   function renderFoot() {
     const t = v => { const [h, m] = v.split(":").map(Number); return `${h % 12 || 12}:${String(m).padStart(2, "0")} ${h < 12 ? "AM" : "PM"}`; };
@@ -166,7 +203,9 @@
         <p>${settings.mode === "closed" ? "Closed for now" : settings.mode === "open" ? "Open now" : `Every day, ${t(settings.open)} to ${t(settings.close)}`}</p>
         <p>Delivering in Wote town: ${settings.deliveryAreas.map(a => esc(a.name)).join(", ")}</p></div>
       </div>
-      <div class="foot-bottom"><a href="/policy.html">Privacy and refunds</a><span>Tuye Bites, Wote</span></div>`;
+      <div class="foot-bottom"><a href="/policy.html">Privacy and refunds</a>
+        ${I18N.canSwitch(settings) ? `<span class="foot-lang"><button type="button" data-lang="en">English</button> | <button type="button" data-lang="sw">Kiswahili</button></span>` : ""}<span>Tuye Bites, Wote</span></div>`;
+    $$("#siteFoot [data-lang]").forEach(b => b.onclick = () => { I18N.set(b.dataset.lang); renderShop(); });
   }
 
   // ---------- Hot Deals: like a flash sale, every food with its own price, time and stock ----------
@@ -211,6 +250,7 @@
     const now = all.filter(d => d.started).sort((a, b) => (a.left === 0) - (b.left === 0) || a.end - b.end), soon = all.filter(d => !d.started);
     const box = $("#deals");
     box.classList.toggle("hidden", !all.length);
+    $('#bnav [data-nav="deals"]').classList.toggle("hidden", !all.length);
     if (!all.length) return;
     // The header counts down to the first deal that ends
     const firstEnd = now.filter(d => d.left !== 0).map(d => d.end).sort((a, b) => a - b)[0];
@@ -677,6 +717,16 @@
   $("#tillStep").onclick = copyTill;
   $("#sheets").addEventListener("click", e => { if (e.target.closest(".copy-till")) copyTill(); });
   $("#ordersBar").onclick = openMyOrders;
+  $("#bnav").addEventListener("click", e => {
+    const b = e.target.closest("[data-nav]");
+    if (!b) return;
+    const go = b.dataset.nav;
+    if (go === "menu") { closeSheet(); window.scrollTo({ top: 0, behavior: "smooth" }); }
+    if (go === "deals") { closeSheet(); const d = $("#deals"); window.scrollTo({ top: d.getBoundingClientRect().top + scrollY - $(".top").offsetHeight - 8, behavior: "smooth" }); }
+    if (go === "orders") openMyOrders();
+    if (go === "help") openHelp();
+    $$("#bnav [data-nav]").forEach(x => x.classList.toggle("on", x === b && (go === "menu" || go === "deals")));
+  });
   $("#cartBtn").onclick = () => openCart();
   $("#cartBar").onclick = () => openCart();
 
@@ -708,6 +758,7 @@
   async function load() {
     try {
       ({ items, settings } = await Api.shop());
+      I18N.check(settings);
       store.set("tb_menu", { at: Date.now(), items, settings });
       offline(false);
       renderShop();
