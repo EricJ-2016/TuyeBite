@@ -17,12 +17,26 @@
 <link rel="icon" type="image/png" href="/favicon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Poppins:wght@700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=25">
+<link rel="stylesheet" href="style.css?v=26">
 <script src="api.js?v=9"></script>
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="apple-touch-icon" href="/icon-180.png">
 </head>
 <body>
+<!-- Opening screen of the installed app: the full logo, then "Powered by Muthwii Mukamba" -->
+<div id="splash" aria-hidden="true"><img src="/logo-full.webp" alt=""><p>Powered by <b>Muthwii Mukamba</b></p></div>
+<script>
+(() => {
+  const s = document.getElementById("splash");
+  // Shown when the site is opened as an installed app (or with ?splash=1 to try it)
+  const app = matchMedia("(display-mode: standalone)").matches || navigator.standalone || /[?&]splash=1/.test(location.search);
+  if (!app) { s.remove(); return; }
+  s.classList.add("on");
+  const hide = () => { if (!s.isConnected) return; s.classList.add("gone"); setTimeout(() => s.remove(), 600); };
+  addEventListener("load", () => setTimeout(hide, 1600));
+  setTimeout(hide, 4000);
+})();
+</script>
 
 <header class="top">
   <div class="in">

@@ -463,3 +463,15 @@ body::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-even
 @media (max-width: 360px) { .head-logo { height: 52px; } }
 /* the search bar sticks just under the top bar, whatever its height */
 .tools { top: var(--headH, 70px); }
+
+/* ---------- opening screen of the installed app ---------- */
+#splash { display: none; position: fixed; inset: 0; z-index: 300; background: #fff; flex-direction: column; align-items: center; justify-content: center; gap: 18px;
+  transition: opacity .5s; padding: 24px; }
+#splash.on { display: flex; }
+#splash.gone { opacity: 0; pointer-events: none; }
+#splash img { width: min(82vw, 440px); height: auto; animation: splashIn .7s cubic-bezier(.2, 1.4, .4, 1) both; }
+#splash p { position: absolute; bottom: max(28px, env(safe-area-inset-bottom)); margin: 0; color: var(--muted); font-size: .9rem; letter-spacing: .3px;
+  animation: splashText .6s .5s both; }
+#splash p b { color: var(--plum); }
+@keyframes splashIn { from { transform: scale(.82); opacity: 0; } }
+@keyframes splashText { from { opacity: 0; transform: translateY(8px); } }
