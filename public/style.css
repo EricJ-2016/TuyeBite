@@ -527,3 +527,8 @@ body::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-even
 .cart-btn.bump { animation: cartBump .45s ease; }
 @keyframes cartBump { 30% { transform: scale(1.18) rotate(-6deg); } 60% { transform: scale(.95) rotate(3deg); } }
 @media (max-width: 420px) { #addedPop { right: 8px; width: calc(100vw - 16px); } #addedPop img { display: none; } }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
+  .hv-slide { transition: none !important; }
+}

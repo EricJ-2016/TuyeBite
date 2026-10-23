@@ -251,8 +251,15 @@
   // ---------- sheets ----------
   // A pop-up may set "leaveCheck": it runs before the pop-up closes and can stop it (checkout asks first)
   let leaveCheck = null;
-  function sheet(html) {
+  function sheet(html, still = false) {
     leaveCheck = null;
+    const open = $("#sheets .sheet");
+    if (still && open) {
+      const y = open.scrollTop;
+      open.innerHTML = html;
+      open.scrollTop = y;
+      return open;
+    }
     $("#sheets").innerHTML = `<div class="sheet-bg"><div class="sheet" role="dialog" aria-modal="true">${html}</div></div>`;
     document.body.style.overflow = "hidden";
     const bg = $("#sheets .sheet-bg");
@@ -340,7 +347,8 @@
     refresh();
   }
 
-  function openCart() {
+  // still = changing amounts or removing inside the open cart: the cart updates where it is, without moving
+  function openCart(still = false) {
     const lines = cartLines();
     if (!lines.length) { toast("Your cart is empty. Tap + on any food."); return; }
     const el = sheet(`<div class="head"><h2>Your cart</h2><button class="x" aria-label="Close">&times;</button></div>
@@ -353,15 +361,15 @@
       ${tooBig(itemCount()) ? `<p class="alert bad">${esc(tooBigText(itemCount()))}</p>`
         : bigFee(itemCount()) ? `<p class="alert info">${esc(bigText(itemCount()))} on delivery.</p>`
         : `<p class="hint">Delivery fee is added on the next step.${settings.bigOn ? ` Up to ${settings.bigIncluded} items are carried for the normal delivery fee.` : ""}</p>`}
-      <div class="bottom"><button class="btn light" id="more">Add more food</button><button class="btn green" id="toCheckout"${tooBig(itemCount()) ? " disabled" : ""}>Checkout</button></div>`);
+      <div class="bottom"><button class="btn light" id="more">Add more food</button><button class="btn green" id="toCheckout"${tooBig(itemCount()) ? " disabled" : ""}>Checkout</button></div>`, still);
     $$(".line", el).forEach(row => {
       const l = cart.find(x => x.key === row.dataset.k);
-      $(".rm", row).onclick = () => { cart = cart.filter(x => x !== l); saveCart(); cart.length ? openCart() : closeSheet(); };
+      $(".rm", row).onclick = () => { cart = cart.filter(x => x !== l); saveCart(); cart.length ? openCart(true) : closeSheet(); };
       $$("[data-q]", row).forEach(b => b.onclick = () => {
         l.qty += Number(b.dataset.q);
         if (l.qty < 1) cart = cart.filter(x => x !== l);
         l.qty = Math.min(20, l.qty);
-        saveCart(); cart.length ? openCart() : closeSheet();
+        saveCart(); cart.length ? openCart(true) : closeSheet();
       });
     });
     $("#more", el).onclick = closeSheet;
@@ -603,8 +611,8 @@
   }
   $("#tillStep").onclick = copyTill;
   $("#sheets").addEventListener("click", e => { if (e.target.closest(".copy-till")) copyTill(); });
-  $("#cartBtn").onclick = openCart;
-  $("#cartBar").onclick = openCart;
+  $("#cartBtn").onclick = () => openCart();
+  $("#cartBar").onclick = () => openCart();
 
   // ---------- install like an app ----------
   let installEvent = null;
