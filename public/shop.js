@@ -78,7 +78,7 @@
     $("#busyBar").textContent = `We are very busy right now. Delivery may take ${settings.busyTime}. Thank you for your patience.`;
     $("#busyBar").classList.toggle("hidden", !(isOpen() && settings.busy));
     // Step 2 shows the till number saved in admin -> Settings
-    $("#tillStep").textContent = settings.till ? `Pay on Till ${settings.till}` : "Pay on Till";
+    $("#tillText").textContent = settings.till ? `Pay on Till ${settings.till}` : "Pay on Till";
     $("#dTime").textContent = settings.deliveryTime ? `Delivery in about ${settings.deliveryTime}.` : "";
     renderDeals();
     renderHeroVis();
@@ -398,7 +398,7 @@
         ${settings.minOrder && food < settings.minOrder ? `<p class="alert bad">The smallest order is ${money(settings.minOrder)} of food. Please add more food.</p>` : ""}
         <div class="pay"><h3>Pay first on M-Pesa</h3>
           <ol><li>Open M-Pesa, choose <b>Lipa na M-Pesa</b>, then <b>Buy Goods and Services</b>.</li>
-            <li>Till number: <span class="till">${esc(settings.till)}</span>${settings.tillName ? ` <small>(${esc(settings.tillName)})</small>` : ""}</li>
+            <li>Till number: <button type="button" class="till copy-till" title="Tap to copy">${esc(settings.till)}<span>Copy</span></button>${settings.tillName ? ` <small>(${esc(settings.tillName)})</small>` : ""}</li>
             <li>Amount: <b id="payAmt"></b></li>
             <li>Type the M-Pesa code from your message below.</li></ol>
           <label>M-Pesa code <input id="cCode" autocomplete="off" autocapitalize="characters" maxlength="12" placeholder="e.g. QJK7Y2B4XZ" style="text-transform:uppercase;letter-spacing:2px;font-weight:700"></label>
@@ -572,6 +572,13 @@
   };
   $("#menu").addEventListener("click", onFoodClick);
   $("#deals").addEventListener("click", onFoodClick);
+  // Tap the till number (welcome box or checkout) to copy it, then paste it in M-Pesa
+  async function copyTill() {
+    if (!settings || !settings.till) return;
+    toast(await copyText(settings.till) ? `Till ${settings.till} copied. Paste it in M-Pesa.` : `Till number: ${settings.till}`);
+  }
+  $("#tillStep").onclick = copyTill;
+  $("#sheets").addEventListener("click", e => { if (e.target.closest(".copy-till")) copyTill(); });
   $("#cartBtn").onclick = openCart;
   $("#cartBar").onclick = openCart;
 

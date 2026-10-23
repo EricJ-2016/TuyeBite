@@ -173,6 +173,16 @@ window.FULL_LOGO = `<img src="/logo-full.webp" alt="Tuye Bites - Let's eat. Fast
 window.headerLogo = s => s && s.logo ? `<img src="${esc(s.logo)}" alt="Tuye Bites">` : FULL_LOGO;
 window.logoHtml = s => s && s.logo ? `<img src="${esc(s.logo)}" alt="Tuye Bites">` : DEFAULT_LOGO;
 
+// Copies text to the phone's clipboard (older phones: the hidden-box way)
+window.copyText = async text => {
+  try { await navigator.clipboard.writeText(text); return true; } catch (e) {}
+  try {
+    const t = document.createElement("textarea");
+    t.value = text; t.setAttribute("readonly", ""); t.style.cssText = "position:fixed;top:-100px;opacity:0";
+    document.body.appendChild(t); t.select(); t.setSelectionRange(0, 99);
+    const ok = document.execCommand("copy"); t.remove(); return ok;
+  } catch (e) { return false; }
+};
 window.toast = (msg, bad) => {
   let t = $("#toast");
   if (!t) { t = document.createElement("div"); t.id = "toast"; document.body.appendChild(t); }

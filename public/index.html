@@ -17,8 +17,8 @@
 <link rel="icon" type="image/png" href="/favicon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Poppins:wght@700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="style.css?v=27">
-<script src="api.js?v=9"></script>
+<link rel="stylesheet" href="style.css?v=28">
+<script src="api.js?v=10"></script>
 <link rel="manifest" href="/manifest.webmanifest">
 <link rel="apple-touch-icon" href="/icon-180.png">
 </head>
@@ -61,7 +61,7 @@
     <div class="hero-text">
       <h1>Hot food from Wote's best fast foods, <span>brought to your door.</span></h1>
       <p>Choose your food, pay on M-Pesa Till and our rider brings it to you. <b id="dTime"></b></p>
-      <div class="steps"><span><b>1</b>Pick your food</span><span><b>2</b><i id="tillStep">Pay on Till</i></span><span><b>3</b>We deliver</span></div>
+      <div class="steps"><span><b>1</b>Pick your food</span><button type="button" class="step-btn" id="tillStep" title="Tap to copy the till number"><b>2</b><i id="tillText">Pay on Till</i><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="9" width="12" height="12" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button><span><b>3</b>We deliver</span></div>
     </div>
     <div class="hero-vis" id="heroVis" aria-label="Featured food"></div>
   </section>
@@ -82,6 +82,6 @@
 <button class="cartbar hidden" id="cartBar"><span id="cartBarCount"></span><span id="cartBarTotal"></span></button>
 <div id="sheets"></div>
 
-<script src="shop.js?v=18"></script>
+<script src="shop.js?v=19"></script>
 </body>
 </html>

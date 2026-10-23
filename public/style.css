@@ -477,3 +477,12 @@ body::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-even
 @keyframes splashText { from { opacity: 0; transform: translateY(8px); } }
 
 .hero .steps i { font-style: normal; }
+
+/* tap to copy the till number */
+.hero .steps .step-btn { display: inline-flex; align-items: center; gap: 4px; background: rgba(255, 255, 255, .16); border: 1.5px dashed rgba(255, 255, 255, .7); color: #fff;
+  border-radius: 99px; padding: 5px 12px; font-size: .85rem; font-weight: 700; cursor: pointer; }
+.hero .steps .step-btn:active { transform: scale(.96); }
+.hero .steps .step-btn b { color: var(--amber); margin-right: 2px; }
+.hero .steps .step-btn i { font-style: normal; }
+.copy-till { display: inline-flex; align-items: center; gap: 8px; border: 2px dashed var(--green); background: #fff; border-radius: 10px; padding: 2px 10px; cursor: pointer; font: inherit; }
+.copy-till span { font-family: Inter, sans-serif; font-size: .72rem; letter-spacing: 0; font-weight: 800; color: #fff; background: var(--green); border-radius: 6px; padding: 2px 6px; }
