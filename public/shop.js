@@ -77,6 +77,8 @@
     $("#closedBar").classList.toggle("hidden", isOpen());
     $("#busyBar").textContent = `We are very busy right now. Delivery may take ${settings.busyTime}. Thank you for your patience.`;
     $("#busyBar").classList.toggle("hidden", !(isOpen() && settings.busy));
+    // Step 2 shows the till number saved in admin -> Settings
+    $("#tillStep").textContent = settings.till ? `Pay on Till ${settings.till}` : "Pay on Till";
     $("#dTime").textContent = settings.deliveryTime ? `Delivery in about ${settings.deliveryTime}.` : "";
     renderDeals();
     renderHeroVis();
