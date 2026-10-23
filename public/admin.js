@@ -514,8 +514,9 @@
       const data = { name: $("#n", el).value, category: $("#cat", el).value, price: $("#p", el).value, oldPrice: $("#op", el).value,
         cost: $("#c", el).value, hotel: $("#h", el).value, description: $("#d", el).value, options, available: $("#av", el).checked,
         orderedToday: $("#ot", el).value, viewing: $("#vw", el).value };
-      data.photos = photos;
       busy($("#save", el), $("#e", el), async () => {
+        // Each photo goes with a small copy for the menu cards (also made now for photos saved before)
+        data.photos = await Promise.all(photos.map(async src => ({ src, thumb: await shrinkSrc(src, 360, 0.7).catch(() => null) })));
         await Api.saveItem(it && it.id, data);
         toast(it ? "Food saved" : "Food added");
         await viewMenu();

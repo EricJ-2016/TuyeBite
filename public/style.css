@@ -532,3 +532,32 @@ body::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-even
   *, *::before, *::after { animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; scroll-behavior: auto !important; }
   .hv-slide { transition: none !important; }
 }
+
+/* order updates box */
+.upd { display: flex; align-items: center; gap: 10px; }
+.upd > div { flex: 1; min-width: 0; display: grid; }
+.upd small { color: var(--muted); font-size: .82rem; }
+.upd-ic { width: 34px; height: 34px; border-radius: 50%; background: var(--green); display: grid; place-items: center; flex: none; }
+.upd-ic.bell { background: var(--amber); }
+.upd-card .err { margin: 6px 0 0; }
+
+/* ---------- My orders ---------- */
+.orders-bar { display: flex; align-items: center; gap: 8px; width: 100%; border: 0; background: #fff; border-bottom: 1px solid var(--line); padding: 9px 16px; cursor: pointer;
+  font: inherit; color: var(--ink); text-align: left; }
+.orders-bar.hidden { display: none; }
+.ob-ic { color: var(--plum); display: grid; }
+.orders-bar b { flex: none; }
+.ob-n { background: var(--soft); border-radius: 99px; padding: 1px 8px; font-size: .78rem; font-weight: 800; }
+.ob-live { background: var(--green); color: #fff; border-radius: 99px; padding: 2px 9px; font-size: .78rem; font-weight: 800; }
+.ob-go { margin-left: auto; color: var(--red); font-weight: 800; font-size: .88rem; }
+.mo { border: 1.5px solid var(--line); border-radius: 14px; padding: 10px 12px; margin-bottom: 10px; display: grid; gap: 4px; }
+.mo-h { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+.mo-h b { font-size: 1.05rem; }
+.mo-st { font-size: .75rem; font-weight: 800; padding: 3px 9px; border-radius: 99px; }
+.mo-st.wait { background: #fde4e4; color: var(--red); } .mo-st.bad { background: #f6e3ed; color: var(--plum); }
+.mo-st.go { background: #eef8de; color: #3f6b00; } .mo-st.done { background: #e6f6df; color: var(--green); } .mo-st.off { background: #eee; color: #555; }
+.mo-when { color: var(--muted); }
+.mo-foods { margin: 0; font-size: .88rem; }
+.mo-btns { display: flex; gap: 8px; margin-top: 4px; }
+
+.offline-bar { background: var(--ink); color: #fff; text-align: center; padding: 9px 16px; font-weight: 700; font-size: .88rem; }

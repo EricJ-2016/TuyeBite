@@ -35,6 +35,8 @@ window.Api = (() => {
     track: token => api("track/" + encodeURIComponent(token), { extra: orderKeyHeader(token) }),
     openOrder: (token, pin) => api("track/" + encodeURIComponent(token) + "/open", { method: "POST", body: { pin } }),
     newCode: (token, mpesaCode) => api("track/" + encodeURIComponent(token) + "/code", { method: "POST", body: { mpesaCode }, extra: orderKeyHeader(token) }),
+    orderPush: (token, sub) => api("track/" + encodeURIComponent(token) + "/push", { method: "POST", body: sub, extra: orderKeyHeader(token) }),
+    orderUnpush: (token, endpoint) => api("track/" + encodeURIComponent(token) + "/unpush", { method: "POST", body: { endpoint }, extra: orderKeyHeader(token) }),
     rate: (token, stars, comment) => api("track/" + encodeURIComponent(token) + "/rate", { method: "POST", body: { stars, comment }, extra: orderKeyHeader(token) }),
 
     // ---------- logins ----------
@@ -103,6 +105,36 @@ window.OrderKeys = (() => {
     }
   };
 })();
+// Order updates on the customer's phone ("Payment confirmed", "On the way", "Delivered")
+window.OrderUpdates = (() => {
+  const ok = () => "serviceWorker" in navigator && "PushManager" in window && "Notification" in window;
+  const flag = v => { try { if (v === undefined) return localStorage.getItem("tb_updates") === "1"; localStorage.setItem("tb_updates", v ? "1" : ""); } catch (e) { return false; } };
+  const bytes = k => Uint8Array.from(atob(k.replace(/-/g, "+").replace(/_/g, "/")), c => c.charCodeAt(0));
+  return {
+    supported: ok,
+    isOn: () => ok() && Notification.permission === "granted" && flag(),
+    async turnOn(token) {
+      if (!ok()) throw new Error("This phone cannot show updates. On iPhone, first add Tuye Bites to the Home Screen and open it from there.");
+      const perm = await Notification.requestPermission();
+      if (perm !== "granted") throw new Error("Updates were not allowed. You can allow notifications for this site in your browser settings.");
+      await navigator.serviceWorker.register("/sw.js");
+      const reg = await navigator.serviceWorker.ready;
+      let sub = await reg.pushManager.getSubscription();
+      if (!sub) {
+        const r = await fetch("/api/push/public-key").then(x => x.json());
+        sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: bytes(r.key) });
+      }
+      await Api.orderPush(token, sub.toJSON());
+      flag(true);
+    },
+    // Only stops the updates for this customer (the same phone may also get admin alerts)
+    async turnOff(token) {
+      try { const reg = await navigator.serviceWorker.ready, sub = await reg.pushManager.getSubscription(); if (sub) await Api.orderUnpush(token, sub.endpoint); } catch (e) {}
+      flag(false);
+    }
+  };
+})();
+
 // "Not you? Clear": forget the name, number, directions, recent orders, order keys and cart on this phone
 window.forgetMe = () => {
   for (const k of ["tb_me", "tb_orders", "tb_keys", "tb_cart"]) {
@@ -165,6 +197,19 @@ window.compressImage = (file, max = 700, q = 0.72) => new Promise((resolve, reje
 });
 
 // The Tuye Bites mark used until a logo is uploaded in admin -> Settings
+// A smaller copy of a photo that is already on the page or saved (for menu-card thumbnails)
+window.shrinkSrc = (src, max = 360, q = 0.7) => new Promise((resolve, reject) => {
+  const img = new Image();
+  img.onload = () => {
+    const s = Math.min(1, max / Math.max(img.width, img.height)), c = document.createElement("canvas");
+    c.width = Math.round(img.width * s); c.height = Math.round(img.height * s);
+    c.getContext("2d").drawImage(img, 0, 0, c.width, c.height);
+    resolve(c.toDataURL("image/jpeg", q));
+  };
+  img.onerror = () => reject(new Error("Photo could not be read."));
+  img.src = src;
+});
+
 // The Tuye Bites burger (from the owner's logo), used until another logo is uploaded in admin -> Settings
 window.DEFAULT_LOGO = `<img src="/logo-icon.webp" alt="Tuye Bites">`;
 // The full logo with the name and "Let's eat. Fast food delivered to you."

@@ -42,7 +42,7 @@
   function foodCard(it) {
     const tag = !it.available ? `<span class="tag out">Finished for today</span>` : it.deal ? `<span class="tag deal">Hot Deal</span>` : it.oldPrice ? `<span class="tag">Offer</span>` : "";
     return `<article class="food${it.available ? "" : " off"}" data-id="${esc(it.id)}">
-      <div class="ph">${it.image ? `<img src="${esc(it.image)}" alt="${esc(it.name)}" loading="lazy">` : `<span class="none">${esc(it.name.slice(0, 1))}</span>`}${tag}
+      <div class="ph">${it.image ? `<img src="${esc(it.thumb || it.image)}" alt="${esc(it.name)}" loading="lazy">` : `<span class="none">${esc(it.name.slice(0, 1))}</span>`}${tag}
         ${it.oldPrice && it.available ? `<span class="off-pct">-${pctOff(it)}%</span>` : ""}${photoDots(it)}</div>
       <div class="body"><h3>${esc(it.name)}</h3>${it.description ? `<p>${esc(it.description)}</p>` : ""}
         ${it.available && it.orderedToday ? `<span class="buzz">${it.orderedToday} ordered today</span>` : ""}
@@ -89,9 +89,67 @@
     renderHeroVis();
     renderMenu();
     saveCart();
-    const mine = store.get("tb_orders", []).filter(o => Date.now() - o.at < 3 * 864e5);
     renderFoot();
-    $("#myOrders").innerHTML = mine.length ? "Your recent orders: " + mine.map(o => `<a href="/t/${esc(o.token)}">${esc(o.no)}</a>`).join(", ") : "";
+    renderOrdersBar();
+  }
+
+  // ---------- My orders: this phone's recent orders with their live status ----------
+  const myOrderList = () => store.get("tb_orders", []).filter(o => Date.now() - o.at < 14 * 864e5);
+  const STAGE = { new: ["Checking payment", "wait"], payment_problem: ["Check your M-Pesa code", "bad"], confirmed: ["Paid, being prepared", "go"],
+    on_the_way: ["On the way", "go"], delivered: ["Delivered", "done"], cancelled: ["Cancelled", "off"] };
+  let myCache = {};
+  async function fetchMine() {
+    const list = myOrderList();
+    const got = await Promise.all(list.map(o => Api.track(o.token).then(r => r.needPin ? null : r.order).catch(() => null)));
+    myCache = Object.fromEntries(list.map((o, i) => [o.token, got[i]]));
+    return list;
+  }
+  async function renderOrdersBar() {
+    const bar = $("#ordersBar"), list = myOrderList();
+    bar.classList.toggle("hidden", !list.length);
+    if (!list.length) return;
+    const draw = () => {
+      const live = list.filter(o => myCache[o.token] && ["new", "payment_problem", "confirmed", "on_the_way"].includes(myCache[o.token].status)).length;
+      bar.innerHTML = `<span class="ob-ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5h11M9 12h11M9 19h11M4 5h.01M4 12h.01M4 19h.01"/></svg></span>
+        <b>My orders</b>${live ? `<span class="ob-live">${live} in progress</span>` : `<span class="ob-n">${list.length}</span>`}<span class="ob-go">View</span>`;
+    };
+    draw();
+    await fetchMine().catch(() => {});
+    draw();
+  }
+  async function openMyOrders() {
+    const el = sheet(`<div class="head"><h2>My orders</h2><button class="x" aria-label="Close">&times;</button></div><div id="myList"><p class="empty">Loading your orders...</p></div>`);
+    await fetchMine().catch(() => {});
+    const list = myOrderList();
+    $("#myList", el).innerHTML = list.length ? list.map(x => {
+      const o = myCache[x.token];
+      if (!o) return `<div class="mo"><div class="mo-h"><b>${esc(x.no)}</b><small>${timeAgo(x.at)}</small></div><a class="btn small light" href="/t/${esc(x.token)}">Open</a></div>`;
+      const [label, kind] = o.expired ? ["Delivered", "done"] : STAGE[o.status] || [o.status, "wait"];
+      const foods = o.items ? o.items.map(l => `${l.qty} x ${l.name}`).join(", ") : "";
+      return `<div class="mo" data-t="${esc(x.token)}"><div class="mo-h"><b>${esc(o.no)}</b><span class="mo-st ${kind}">${esc(label)}</span></div>
+        <small class="mo-when">${timeAgo(o.at)}${o.total ? " | " + money(o.total) : ""}</small>
+        ${foods ? `<p class="mo-foods">${esc(foods)}</p>` : ""}
+        <div class="mo-btns"><a class="btn small plum" href="/t/${esc(x.token)}">${["confirmed", "on_the_way", "delivered"].includes(o.status) && !o.expired ? "Track and receipt" : "Open"}</a>
+          ${o.items ? `<button class="btn small green" data-again>Order again</button>` : ""}</div></div>`;
+    }).join("") : `<p class="empty">No orders on this phone yet.</p>`;
+    $$("[data-again]", el).forEach(b => b.onclick = () => orderAgain(myCache[b.closest(".mo").dataset.t]));
+  }
+  // Puts the same foods and choices back in the cart
+  function orderAgain(o) {
+    let added = 0;
+    for (const l of o.items) {
+      const it = byId(l.id);
+      if (!it || !it.available) continue;
+      const choices = {};
+      for (const c of l.choices || []) (choices[c.group] ??= []).push(c.name);
+      const key = l.id + "|" + JSON.stringify(choices), same = cart.find(x => x.key === key);
+      if (same) same.qty = Math.min(20, same.qty + l.qty); else cart.push({ key, id: l.id, qty: l.qty, choices });
+      added++;
+    }
+    saveCart();
+    if (!added) { toast("Those foods are not available right now.", true); return; }
+    closeSheet(); openCart();
+    if (added < o.items.length) toast("Some foods from that order are finished for today.");
   }
 
   // ---------- contact strip at the bottom ----------
@@ -132,7 +190,7 @@
     const soldOut = d.started && d.left === 0, soon = !d.started;
     const bar = d.qty ? `<div class="stock"><span>${soldOut ? "Sold out" : `${d.left} left`}</span><div><i style="width:${Math.max(4, Math.round((d.left / d.qty) * 100))}%"></i></div></div>` : "";
     return `<article class="food flash-card${soldOut ? " sold" : ""}${soon ? " soon" : ""}${it.available ? "" : " off"}" data-id="${esc(it.id)}">
-      <div class="ph">${it.image ? `<img src="${esc(it.image)}" alt="${esc(it.name)}" loading="lazy">` : `<span class="none">${esc(it.name.slice(0, 1))}</span>`}
+      <div class="ph">${it.image ? `<img src="${esc(it.thumb || it.image)}" alt="${esc(it.name)}" loading="lazy">` : `<span class="none">${esc(it.name.slice(0, 1))}</span>`}
         <span class="off-pct">-${pct}%</span>${soldOut ? `<span class="sold-tag">SOLD OUT</span>` : ""}${photoDots(it)}</div>
       <div class="body"><h3>${esc(it.name)}</h3>
         <div class="flash-price"><b>${money(d.price)}</b><s>${money(normal)}</s></div>
@@ -193,7 +251,7 @@
     const foods = items.filter(i => i.available && i.image).sort((a, b) => (b.orderedToday || 0) - (a.orderedToday || 0)).slice(0, 3);
     if (foods.length) {
       box.className = "hero-vis stack n" + foods.length;
-      box.innerHTML = foods.map((it, i) => `<div class="hv-card c${i}" data-id="${esc(it.id)}"><img src="${esc(it.image)}" alt="${esc(it.name)}">
+      box.innerHTML = foods.map((it, i) => `<div class="hv-card c${i}" data-id="${esc(it.id)}"><img src="${esc(it.thumb || it.image)}" alt="${esc(it.name)}">
         <div><b>${esc(it.name)}</b><span>${money(it.price)}</span></div></div>`).join("");
       return;
     }
@@ -397,6 +455,7 @@
   }
 
   function openCheckout() {
+    if (!navigator.onLine) { toast("You are offline. Connect to the internet to order.", true); return; }
     const slots = laterSlots();
     if (!isOpen() && !slots.length) { toast(settings.state.text, true); return; }
     const lines = cartLines();
@@ -584,7 +643,13 @@
         <p>We are checking your M-Pesa payment of <b>${money(o.total)}</b>.${o.deliverAt ? ` We will deliver <b>${esc(slotText(o.deliverAt).toLowerCase())}</b>.` : ""} You can follow your order on the tracking page.</p>
         <div class="btns"><a class="btn wa" id="waBtn" target="_blank" rel="noopener" href="${esc(waLink(settings.whatsapp, text))}">Send my order on WhatsApp</a>
           <a class="btn plum" href="/t/${esc(o.token)}">Track my order</a></div>
+        ${OrderUpdates.supported() && !OrderUpdates.isOn() ? `<button class="btn light wide" id="updBtn" style="margin-top:10px">Get order updates on this phone</button><p class="err" id="updErr"></p>` : ""}
         <p class="hint">Tap "Send my order on WhatsApp" so we get it even faster.</p></div>`);
+    if ($("#updBtn", el)) $("#updBtn", el).onclick = async () => {
+      const b = $("#updBtn", el); b.disabled = true; b.textContent = "Please wait...";
+      try { await OrderUpdates.turnOn(o.token); b.textContent = "Updates are on"; }
+      catch (e) { $("#updErr", el).textContent = e.message; b.disabled = false; b.textContent = "Get order updates on this phone"; }
+    };
     $("#waBtn", el).focus();
   }
 
@@ -611,6 +676,7 @@
   }
   $("#tillStep").onclick = copyTill;
   $("#sheets").addEventListener("click", e => { if (e.target.closest(".copy-till")) copyTill(); });
+  $("#ordersBar").onclick = openMyOrders;
   $("#cartBtn").onclick = () => openCart();
   $("#cartBar").onclick = () => openCart();
 
@@ -638,14 +704,28 @@
   window.addEventListener("resize", headH);
   window.addEventListener("load", headH);
   $(".top img") && $(".top img").addEventListener("load", headH);
+  // Without internet the menu from the last visit still shows (ordering waits until the phone is back online)
   async function load() {
     try {
       ({ items, settings } = await Api.shop());
+      store.set("tb_menu", { at: Date.now(), items, settings });
+      offline(false);
       renderShop();
     } catch (e) {
-      if (!settings) $("#menu").innerHTML = `<p class="empty">${esc(e.message)}</p>`;
+      const saved = store.get("tb_menu", null);
+      if (!settings && saved) { ({ items, settings } = saved); renderShop(); }
+      if (settings) offline(true);
+      else $("#menu").innerHTML = `<p class="empty">${esc(e.message)}</p>`;
     }
   }
+  function offline(on) {
+    let bar = $("#offlineBar");
+    if (!bar) { bar = document.createElement("div"); bar.id = "offlineBar"; bar.className = "offline-bar hidden"; $(".top").after(bar); }
+    bar.textContent = "You are offline. This is the menu from your last visit. Connect to the internet to order.";
+    bar.classList.toggle("hidden", !on);
+  }
+  window.addEventListener("online", () => load());
+  window.addEventListener("offline", () => { if (settings) offline(true); });
   // A shared food link (/f/<food>) opens that food straight away
   load().then(() => {
     const m = /food=([^&]+)/.exec(location.hash);
