@@ -486,3 +486,28 @@ body::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-even
 .hero .steps .step-btn i { font-style: normal; }
 .copy-till { display: inline-flex; align-items: center; gap: 8px; border: 2px dashed var(--green); background: #fff; border-radius: 10px; padding: 2px 10px; cursor: pointer; font: inherit; }
 .copy-till span { font-family: Inter, sans-serif; font-size: .72rem; letter-spacing: 0; font-weight: 800; color: #fff; background: var(--green); border-radius: 6px; padding: 2px 6px; }
+
+/* ---------- moving motorbike with the delivery time, in the top bar ---------- */
+.moto-chip { display: inline-flex; align-items: center; gap: 4px; flex: none; background: #fff8ec; border: 1.5px solid #f6dcb4; border-radius: 99px;
+  padding: 2px 10px 2px 4px; white-space: nowrap; }
+.moto-chip b { font-size: .82rem; font-weight: 800; color: var(--red-dark); font-variant-numeric: tabular-nums; }
+.moto-chip.busy { background: #fff3d9; border-color: var(--amber); }
+.moto-chip.busy b { color: #9a5c0a; }
+.moto { width: 48px; height: 28px; display: block; overflow: visible; }
+.moto .wheel { transform-box: fill-box; transform-origin: center; animation: motoSpin .45s linear infinite; }
+.moto .ride { animation: motoBob .5s ease-in-out infinite alternate; }
+.moto .lines line { stroke-dasharray: 7 5; animation: motoDash .5s linear infinite; }
+.moto-chip .moto { animation: motoDrive 3.2s ease-in-out infinite; }
+@keyframes motoSpin { to { transform: rotate(360deg); } }
+@keyframes motoBob { to { transform: translateY(-.9px); } }
+@keyframes motoDash { to { stroke-dashoffset: 12; } }
+@keyframes motoDrive { 0%, 100% { transform: translateX(-2px); } 50% { transform: translateX(3px); } }
+@media (prefers-reduced-motion: reduce) { .moto *, .moto-chip .moto { animation: none !important; } }
+@media (max-width: 420px) {
+  .moto-chip { padding: 1px 7px 1px 2px; gap: 2px; }
+  .moto { width: 40px; height: 24px; }
+  .moto-chip b { font-size: .74rem; }
+  .top .in:has(.brand-full) { gap: 6px; }
+}
+@media (max-width: 350px) { .moto-chip b { display: none; } }
+@media (min-width: 760px) { .moto { width: 64px; height: 37px; } .moto-chip { padding: 3px 14px 3px 6px; } .moto-chip b { font-size: 1rem; } }

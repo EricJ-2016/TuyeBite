@@ -78,6 +78,11 @@
     $("#busyBar").textContent = `We are very busy right now. Delivery may take ${settings.busyTime}. Thank you for your patience.`;
     $("#busyBar").classList.toggle("hidden", !(isOpen() && settings.busy));
     // Step 2 shows the till number saved in admin -> Settings
+    // The moving motorbike in the top bar shows the delivery time (the busy time when busy mode is on)
+    const short = t => String(t || "").replace(/^about\s*/i, "").replace(/\s*minutes?\b/i, " min").replace(/\s*hours?\b/i, " hr").trim();
+    $("#motoTime").textContent = settings.busy ? short(settings.busyTime) : short(settings.deliveryTime) || "05-15 min";
+    $("#motoChip").classList.toggle("busy", !!settings.busy);
+    $("#motoChip").classList.toggle("hidden", !settings.busy && !settings.deliveryTime);
     $("#tillText").textContent = settings.till ? `Pay on Till ${settings.till}` : "Pay on Till";
     $("#dTime").textContent = settings.deliveryTime ? `Delivery in about ${settings.deliveryTime}.` : "";
     renderDeals();
