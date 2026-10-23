@@ -9,17 +9,16 @@
 <link rel="icon" type="image/png" href="/favicon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Poppins:wght@700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/style.css?v=23">
-<script src="/api.js?v=8"></script>
+<link rel="stylesheet" href="/style.css?v=25">
+<script src="/api.js?v=9"></script>
 <script src="/receipt.js?v=2"></script>
 <link rel="manifest" href="/manifest.webmanifest">
 </head>
 <body>
 <header class="top">
   <div class="in">
-    <a class="brand" href="/">
-      <span class="logo" id="logo"></span>
-      <span><b><em>TUYE</em> <span>BITES</span></b><small>Fast food delivered in Wote</small></span>
+    <a class="brand brand-full" href="/" aria-label="Tuye Bites home">
+      <span class="head-logo" id="logo"></span>
     </a>
     <span class="grow"></span>
     <a class="btn small light" href="/">Order more</a>
@@ -203,13 +202,13 @@
     try {
       const r = await Api.track(token);
       settings = r.settings;
-      $("#logo").innerHTML = logoHtml(settings);
+      $("#logo").innerHTML = headerLogo(settings);
       if (r.needPin) askPin(r.no); else show(r.order);
     } catch (e) {
       if (!last) $("#page").innerHTML = `<div class="card"><h2>Order not found</h2><p>${esc(e.message)}</p><a class="btn" href="/">Go to the menu</a></div>`;
     }
   }
-  $("#logo").innerHTML = DEFAULT_LOGO;
+  $("#logo").innerHTML = FULL_LOGO;
   load();
   setInterval(() => { if (!document.hidden && !(document.activeElement && ["code", "rateNote", "pin"].includes(document.activeElement.id))) load(); }, 20000);
 })();

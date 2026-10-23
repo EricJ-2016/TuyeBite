@@ -169,6 +169,8 @@ window.compressImage = (file, max = 700, q = 0.72) => new Promise((resolve, reje
 window.DEFAULT_LOGO = `<img src="/logo-icon.webp" alt="Tuye Bites">`;
 // The full logo with the name and "Let's eat. Fast food delivered to you."
 window.FULL_LOGO = `<img src="/logo-full.webp" alt="Tuye Bites - Let's eat. Fast food delivered to you.">`;
+// The top bar of the customer pages: the full logo with its wording (or the logo uploaded in admin)
+window.headerLogo = s => s && s.logo ? `<img src="${esc(s.logo)}" alt="Tuye Bites">` : FULL_LOGO;
 window.logoHtml = s => s && s.logo ? `<img src="${esc(s.logo)}" alt="Tuye Bites">` : DEFAULT_LOGO;
 
 window.toast = (msg, bad) => {

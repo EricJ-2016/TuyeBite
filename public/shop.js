@@ -66,7 +66,8 @@
         .sort((a, b) => b.available - a.available).map(foodCard).join("")}</div>`).join("");
   }
   function renderShop() {
-    $("#logo").innerHTML = logoHtml(settings);
+    $("#logo").innerHTML = headerLogo(settings);
+    const hl = $("#logo img"); if (hl) { hl.complete ? headH() : hl.addEventListener("load", headH); }
     $("#notice").textContent = settings.notice;
     $("#notice").classList.toggle("hidden", !settings.notice);
     const pill = $("#openPill");
@@ -591,6 +592,11 @@
   }
   window.addEventListener("beforeinstallprompt", e => { e.preventDefault(); installEvent = e; showInstall(); });
 
+  // The search bar sticks right under the top bar (its height depends on the logo and the screen)
+  const headH = () => document.documentElement.style.setProperty("--headH", $(".top").offsetHeight + "px");
+  window.addEventListener("resize", headH);
+  window.addEventListener("load", headH);
+  $(".top img") && $(".top img").addEventListener("load", headH);
   async function load() {
     try {
       ({ items, settings } = await Api.shop());

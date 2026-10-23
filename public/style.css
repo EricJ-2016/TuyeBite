@@ -453,3 +453,13 @@ body::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-even
 .rc-thanks { text-align: center; font-size: 11px; border-top: 1px dashed #111; padding-top: 8px; margin: 10px 0 0; }
 .rc-actions { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; margin-top: 14px; }
 .rc-actions .btn { flex: 1; min-width: 130px; }
+
+/* the full logo (burger and "Tuye Bites, Let's eat...") in the top bar of the customer pages */
+.brand-full { padding: 2px 0; }
+.head-logo { display: block; height: 78px; }
+.head-logo img { height: 100%; width: auto; display: block; }
+.brand-full ~ .grow { min-width: 0; }
+@media (max-width: 520px) { .head-logo { height: 60px; } .top .in:has(.brand-full) { padding-top: 6px; padding-bottom: 6px; } }
+@media (max-width: 360px) { .head-logo { height: 52px; } }
+/* the search bar sticks just under the top bar, whatever its height */
+.tools { top: var(--headH, 70px); }
