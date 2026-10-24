@@ -1,6 +1,6 @@
 // Lets phones install Tuye Bites like an app. Pages always come fresh from the internet;
 // only when there is no connection is the last saved copy of the menu page shown.
-const CACHE = "tuye-v7";
+const CACHE = "tuye-v8";
 self.addEventListener("install", e => { e.waitUntil(caches.open(CACHE).then(c => c.addAll(["/"])).catch(() => {})); self.skipWaiting(); });
 self.addEventListener("activate", e => {
   e.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(k => k !== CACHE).map(k => caches.delete(k)))).then(() => self.clients.claim()));

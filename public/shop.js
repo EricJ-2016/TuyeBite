@@ -276,12 +276,20 @@
     if (!all.length) return;
     // The header counts down to the first deal that ends
     const firstEnd = now.filter(d => d.left !== 0).map(d => d.end).sort((a, b) => a - b)[0];
+    const kept = $$(".flash-grid", box).map(g => g.scrollLeft);   // keep the swipe place when the menu refreshes
     box.innerHTML = `<div class="flash-head"><svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true"><path fill="#E7A545" d="M13 2 4 14h7l-1 8 9-12h-7z"/></svg>
         <h2>${esc(settings.deal.title || "Hot Deals")}</h2>
         ${firstEnd ? `<span class="tl">Time left: <b data-end="${firstEnd}">${clockLeft(firstEnd)}</b></span>` : `<span class="tl">Coming soon</span>`}</div>
-      ${now.length ? `<div class="flash-grid">${now.map(dealCard).join("")}</div>` : ""}
-      ${soon.length ? `<h3 class="soon-title">Coming up</h3><div class="flash-grid">${soon.map(dealCard).join("")}</div>` : ""}`;
+      ${now.length ? `<div class="flash-grid">${now.map(dealCard).join("")}</div>${swipeHint(now.length)}` : ""}
+      ${soon.length ? `<h3 class="soon-title">Coming up</h3><div class="flash-grid">${soon.map(dealCard).join("")}</div>${swipeHint(soon.length)}` : ""}`;
+    // Hide "Swipe for more" once the customer reaches the end of the row
+    $$(".flash-grid", box).forEach((g, i) => {
+      const hint = () => { const h = g.nextElementSibling; if (h && h.classList.contains("swipe-hint")) h.classList.toggle("gone", g.scrollLeft + g.clientWidth >= g.scrollWidth - 8); };
+      g.addEventListener("scroll", hint, { passive: true });
+      if (kept[i]) { g.scrollLeft = kept[i]; hint(); }
+    });
   }
+  const swipeHint = n => n > 2 ? `<div class="swipe-hint" aria-hidden="true">Swipe for more <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg></div>` : "";
   // ---------- the space beside the welcome words ----------
   // Own picture (if switched on) > Hot Deals one after the other > best food photos > the logo
   let heroTimer = null, heroIndex = 0;

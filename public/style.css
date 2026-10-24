@@ -609,3 +609,13 @@ body::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-even
   background: var(--plum); color: #fff; border: 0; border-radius: 14px; padding: 12px 16px; box-shadow: 0 12px 30px rgba(0, 0, 0, .3); font: inherit; text-align: left; cursor: pointer; }
 .update-bar span { background: #fff; color: var(--plum); border-radius: 99px; padding: 4px 12px; font-weight: 800; font-size: .85rem; white-space: nowrap; }
 #seeAll { margin-top: 10px; }
+.swipe-hint { display: none; align-items: center; justify-content: flex-end; gap: 4px; margin: -4px 12px 8px; font-size: .78rem; font-weight: 700; color: var(--muted); }
+.swipe-hint.gone { visibility: hidden; }
+/* Hot Deals on phones: one row to swipe sideways (two cards and a bit of the next one show) */
+@media (max-width: 520px) {
+  .flash-grid { display: grid; grid-auto-flow: column; grid-template-columns: none; grid-auto-columns: 43%; overflow-x: auto; scroll-snap-type: x mandatory;
+    scroll-padding: 0 10px; overscroll-behavior-x: contain; scrollbar-width: none; -webkit-overflow-scrolling: touch; }
+  .flash-grid::-webkit-scrollbar { display: none; }
+  .flash-grid > * { scroll-snap-align: start; min-width: 0; }
+  .swipe-hint { display: flex; }
+}

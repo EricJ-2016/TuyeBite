@@ -164,7 +164,7 @@ window.policyHtml = (text, s = {}) => {
 
 // ---------- "A new version is ready" ----------
 // Change APP_VERSION here and in version.json together when uploading a new version.
-window.APP_VERSION = "2026-10-24.1";
+window.APP_VERSION = "2026-10-24.2";
 (() => {
   let shown = false;
   async function check() {
