@@ -106,7 +106,7 @@
     $("#soundBtn").classList.remove("hidden"); showSoundBtn();
     // Admins get every setting; riders only need what customers see
     try { settings = isAdmin() ? await Api.settings() : (await Api.shop()).settings; } catch (e) {}
-    $("#logo").innerHTML = logoHtml(settings);
+    $("#logo").innerHTML = headerLogo(settings);
     const tabs = isAdmin()
       ? [["orders", "Orders"], ["menu", "Menu"], ["customers", "Customers"], ["reports", "Reports"], ["team", "Team"], ["settings", "Settings"]]
       : [["orders", "My deliveries"], ["account", "My account"]];
@@ -859,7 +859,7 @@
     if ($("#rmLogo")) $("#rmLogo").onclick = () => { logo = null; $("#lg").innerHTML = DEFAULT_LOGO; toast("Tap Save shop details to use the default logo"); };
     const save = (btn, err, patch, msg) => busy(btn, err, async () => {
       settings = await Api.saveSettings(patch);
-      $("#logo").innerHTML = logoHtml(settings);
+      $("#logo").innerHTML = headerLogo(settings);
       toast(msg); viewSettings();
     });
     $("#shopF").onsubmit = e => { e.preventDefault();
@@ -1078,7 +1078,10 @@
   }
 
   // ---------- go ----------
-  $("#logo").innerHTML = DEFAULT_LOGO;
+  $("#logo").innerHTML = FULL_LOGO;
+  // Keep the tab bar just under the header, whatever height the logo makes it
+  const headH = () => document.documentElement.style.setProperty("--adminHeadH", $(".top").offsetHeight + "px");
+  headH(); new ResizeObserver(headH).observe($(".top"));
   if (!Api.hasToken()) showAuth();
   else Api.me().then(u => { me = u; start(); }).catch(showAuth);
 })();

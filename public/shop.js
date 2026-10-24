@@ -104,17 +104,20 @@
     myCache = Object.fromEntries(list.map((o, i) => [o.token, got[i]]));
     return list;
   }
+  const LIVE = ["new", "payment_problem", "confirmed", "on_the_way"];
+  const isLive = o => myCache[o.token] && !myCache[o.token].expired && LIVE.includes(myCache[o.token].status);
+  // Top bar: only orders still in progress. The bottom bar "My orders" has them all.
   async function renderOrdersBar() {
     const bar = $("#ordersBar"), list = myOrderList();
-    bar.classList.toggle("hidden", !list.length);
-    if (!list.length) return;
     const draw = () => {
-      const live = list.filter(o => myCache[o.token] && ["new", "payment_problem", "confirmed", "on_the_way"].includes(myCache[o.token].status)).length;
+      const live = list.filter(isLive).length;
+      bar.classList.toggle("hidden", !live);
       bar.innerHTML = `<span class="ob-ic"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5h11M9 12h11M9 19h11M4 5h.01M4 12h.01M4 19h.01"/></svg></span>
-        <b>My orders</b>${live ? `<span class="ob-live">${live} in progress</span>` : `<span class="ob-n">${list.length}</span>`}<span class="ob-go">View</span>`;
+        <b>${live === 1 ? "Your order" : "Your orders"}</b><span class="ob-live">${live} in progress</span><span class="ob-go">View</span>`;
       $("#bnBadge").textContent = live || "";
       $("#bnBadge").classList.toggle("hidden", !live);
     };
+    if (!list.length) { draw(); return; }
     draw();
     await fetchMine().catch(() => {});
     draw();
@@ -138,11 +141,12 @@
       <button type="button" class="btn green small" id="usualBtn">Order again</button>`;
     $("#usualBtn").onclick = () => orderAgain(last);
   }
-  async function openMyOrders() {
-    const el = sheet(`<div class="head"><h2>My orders</h2><button class="x" aria-label="Close">&times;</button></div><div id="myList"><p class="empty">Loading your orders...</p></div>`);
+  async function openMyOrders(onlyLive) {
+    onlyLive = onlyLive === true;
+    const el = sheet(`<div class="head"><h2>${onlyLive ? "Orders in progress" : "My orders"}</h2><button class="x" aria-label="Close">&times;</button></div><div id="myList"><p class="empty">Loading your orders...</p></div>`);
     await fetchMine().catch(() => {});
-    const list = myOrderList();
-    $("#myList", el).innerHTML = list.length ? list.map(x => {
+    const all = myOrderList(), list = onlyLive ? all.filter(isLive) : all;
+    $("#myList", el).innerHTML = (list.length ? list.map(x => {
       const o = myCache[x.token];
       if (!o) return `<div class="mo"><div class="mo-h"><b>${esc(x.no)}</b><small>${timeAgo(x.at)}</small></div><a class="btn small light" href="/t/${esc(x.token)}">Open order</a></div>`;
       const [label, kind] = o.expired ? ["Delivered", "done"] : STAGE[o.status] || [o.status, "wait"];
@@ -152,9 +156,11 @@
         ${foods ? `<p class="mo-foods">${esc(foods)}</p>` : ""}
         <div class="mo-btns"><a class="btn small plum" href="/t/${esc(x.token)}">${["confirmed", "on_the_way", "delivered"].includes(o.status) && !o.expired ? "Track and receipt" : "Open order"}</a>
           ${o.items ? `<button class="btn small green" data-again>Order again</button>` : ""}</div></div>`;
-    }).join("") : `<p class="empty">No orders on this phone yet.</p>`;
+    }).join("") : `<p class="empty">${onlyLive ? "No orders in progress right now." : "No orders on this phone yet."}</p>`)
+      + (onlyLive && all.length > list.length ? `<button type="button" class="btn line wide" id="seeAll">See all my orders (${all.length})</button>` : "");
+    if ($("#seeAll", el)) $("#seeAll", el).onclick = () => openMyOrders();
     $$("[data-again]", el).forEach(b => b.onclick = () => orderAgain(myCache[b.closest(".mo").dataset.t]));
-    if (list.length && settings.shareCode) {
+    if (!onlyLive && list.length && settings.shareCode) {
       $("#myList", el).insertAdjacentHTML("beforeend", `<div class="share-card"><b>Enjoying Tuye Bites?</b><span>Share with a friend: they get code <b>${esc(settings.shareCode)}</b> on their first order.</span><button type="button" class="btn green small" id="shareMine">Share</button></div>`);
       $("#shareMine", el).onclick = shareApp;
     }
@@ -742,7 +748,7 @@
   }
   $("#tillStep").onclick = copyTill;
   $("#sheets").addEventListener("click", e => { if (e.target.closest(".copy-till")) copyTill(); });
-  $("#ordersBar").onclick = openMyOrders;
+  $("#ordersBar").onclick = () => openMyOrders(true);
   $("#bnav").addEventListener("click", e => {
     const b = e.target.closest("[data-nav]");
     if (!b) return;
