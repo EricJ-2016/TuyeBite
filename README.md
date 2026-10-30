@@ -67,7 +67,7 @@ Secrets are only ever kept in Netlify, never in these files. Every push to the `
    - Use the **same** `SESSION_SECRET` so nobody has to log in again (a new one just logs everyone out once).
    - Use a `SETUP_CODE` only you know.
 4. In **Deploys**, tap **Trigger deploy**, then **Deploy site**, so the new values are used.
-5. The site now lives at `tuye-bites.netlify.app`. If the address ever changes, change the two `og:url` / `og:image` lines at the top of `public/index.html` to the new address (they make the WhatsApp preview picture).
+5. The site now lives at `tuye.netlify.app` (GitHub EricJ-2016/TuyeBite, Turso database tuyebite). If the address ever changes, change the two `og:url` / `og:image` lines at the top of `public/index.html` to the new address (they make the WhatsApp preview picture).
 6. Open the new address, log in to `/admin.html`, and check Settings. Turn on phone alerts again on each phone (they belong to the old address).
 
 Each upload to GitHub makes Netlify publish again and uses some of the plan's credits, so save changes up and upload them together.
