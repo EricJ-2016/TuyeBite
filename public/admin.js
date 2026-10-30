@@ -259,10 +259,11 @@
       ${items}
       ${["confirmed", "on_the_way", "new"].includes(o.status) ? buyList(o) : ""}
       ${o.rating ? `<div class="rating">${starsHtml(o.rating)}${o.ratingNote ? ` <i>"${esc(o.ratingNote)}"</i>` : ""}</div>` : ""}
-      <div class="money"><span>Food ${money(o.foodTotal)}${o.discount ? ` - ${esc(o.discountCode)} ${money(o.discount)}` : ""} + delivery ${o.freeDelivery ? "FREE (reward)" : money(o.deliveryFee)}${o.bigFee ? ` + big order ${money(o.bigFee)}` : ""}</span><b>${money(o.total)}</b></div>
+      <div class="money"><span>Food ${money(o.foodTotal)}${o.discount ? ` - ${esc(o.discountCode)} ${money(o.discount)}` : ""}${o.reward ? ` - reward (${o.rewardKind === "referral" ? "friends" : "loyal customer"}) ${money(o.reward)}` : ""} + delivery ${o.freeDelivery ? "FREE (reward)" : money(o.deliveryFee)}${o.bigFee ? ` + big order ${money(o.bigFee)}` : ""}</span><b>${money(o.total)}</b></div>
       <div class="money"><span>M-Pesa code <button class="code" data-copy="${esc(o.mpesaCode)}" title="Copy">${esc(o.mpesaCode)}</button></span>
-        <span>${o.costTotal ? "Profit " + money(o.foodTotal - o.discount - o.costTotal + o.deliveryFee + o.bigFee - (o.riderPay || 0)) : ""}</span></div>
+        <span>${o.costTotal ? "Profit " + money(o.foodTotal - o.discount - o.reward - o.costTotal + o.deliveryFee + o.bigFee - (o.riderPay || 0)) : ""}</span></div>
       ${o.problem && o.status === "payment_problem" ? `<div class="alert bad" style="margin:0">${esc(o.problem)}<br><small>Waiting for the customer to send the correct code.</small></div>` : ""}
+      ${o.status === "cancelled" && o.cancelledBy === "customer" ? `<div class="alert bad" style="margin:0"><b>Cancelled by the customer.</b> ${esc(o.refund)}</div>` : ""}
       ${meta.length ? `<div class="meta">${esc(meta.join(" | "))}</div>` : ""}
       <div class="acts">${acts}<a class="btn small wa" target="_blank" rel="noopener" href="${esc(waLink(o.phone, customerMsg(o)))}">WhatsApp customer</a></div>
     </article>`;
@@ -578,7 +579,8 @@
         <div class="stat"><small>Orders delivered</small><b>${r.delivered}</b></div>
         <div class="stat"><small>Money received</small><b>${money(r.received)}</b></div>
         <div class="stat"><small>Food sales</small><b>${money(r.food)}</b></div>
-        ${r.discounts ? `<div class="stat red"><small>Discount codes</small><b>${money(r.discounts)}</b></div>` : ""}
+        ${r.discounts ? `<div class="stat red"><small>Discount codes and rewards</small><b>${money(r.discounts)}</b>${r.rewardOrders ? `<small>${r.rewardOrders} reward${r.rewardOrders === 1 ? "" : "s"}: ${money(r.rewards)}</small>` : ""}</div>` : ""}
+        ${r.refunds ? `<div class="stat red"><small>Refunds for cancelled orders</small><b>${money(r.refunds)}</b></div>` : ""}
         ${r.freeDeliveries ? `<div class="stat"><small>Free delivery rewards</small><b>${r.freeDeliveries}</b></div>` : ""}
         ${r.bigFees ? `<div class="stat"><small>Big order fees (in delivery fees)</small><b>${money(r.bigFees)}</b></div>` : ""}
         <div class="stat"><small>Delivery fees</small><b>${money(r.fees)}</b></div>
@@ -605,7 +607,7 @@
     const d = t => new Date(t).toLocaleDateString("en-KE", { day: "numeric", month: "short" });
     const text = [`TUYE BITES SUMMARY - ${label} (${d(r.from)}${r.to - r.from > 864e5 ? " to " + d(r.to - 1) : ""})`, "",
       `Orders delivered: ${r.delivered}`, `Money received: ${money(r.received)}`, `Food sales: ${money(r.food)}`,
-      r.discounts ? `Discount codes: - ${money(r.discounts)}` : null, `Delivery fees: ${money(r.fees)}`,
+      r.discounts ? `Discount codes and rewards: - ${money(r.discounts)}` : null, r.refunds ? `Refunds (cancelled): ${money(r.refunds)}` : null, `Delivery fees: ${money(r.fees)}`,
       `Food buying cost: ${money(r.cost)}`, `Rider pay: ${money(r.riderPay)}`, `PROFIT: ${money(r.profit)}`, "",
       `Cancelled: ${r.cancelled} | Still in progress: ${r.waiting}`, r.rating ? `Customer rating: ${r.rating} / 5 (${r.ratedCount} rated)` : null,
       r.foods.length ? "\nBest sellers:\n" + r.foods.slice(0, 5).map(f => `- ${f.name}: ${f.qty}`).join("\n") : null,
@@ -616,10 +618,10 @@
   function downloadCsv() {
     if (!lastReport) return;
     const q = v => { const t = String(v ?? ""); return `"${(/^[=+\-@\t\r]/.test(t) && typeof v !== "number" ? "'" + t : t).replace(/"/g, '""')}"`; };
-    const rows = [["Order", "Date", "Time", "Status", "Customer", "Phone", "Area", "Foods", "Food KES", "Delivery KES", "Total KES", "Buying KES", "Discount KES", "Big order KES", "Rider pay KES", "Profit KES", "M-Pesa code", "Rider", "Stars"]];
+    const rows = [["Order", "Date", "Time", "Status", "Customer", "Phone", "Area", "Foods", "Food KES", "Delivery KES", "Total KES", "Buying KES", "Discount KES", "Reward KES", "Big order KES", "Rider pay KES", "Profit KES", "M-Pesa code", "Rider", "Stars"]];
     for (const o of lastReport.list) rows.push([o.no, new Date(o.at).toLocaleDateString("en-KE"), clock(o.at), STATUS[o.status], o.customer, o.phone, o.area,
       o.items.map(l => `${l.qty} x ${l.name}${l.choices.length ? " (" + choiceText(l) + ")" : ""}`).join("; "),
-      o.foodTotal, o.deliveryFee, o.total, o.costTotal, o.discount || "", o.bigFee || "", o.riderPay || "", o.status === "delivered" ? o.foodTotal - o.discount - o.costTotal + o.deliveryFee + o.bigFee - (o.riderPay || 0) : "", o.mpesaCode, o.riderName, o.rating || ""]);
+      o.foodTotal, o.deliveryFee, o.total, o.costTotal, o.discount || "", o.reward || "", o.bigFee || "", o.riderPay || "", o.status === "delivered" ? o.foodTotal - o.discount - o.reward - o.costTotal + o.deliveryFee + o.bigFee - (o.riderPay || 0) : "", o.mpesaCode, o.riderName, o.rating || ""]);
     const blob = new Blob(["﻿" + rows.map(r => r.map(q).join(",")).join("\r\n")], { type: "text/csv;charset=utf-8" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob); a.download = `Tuye Bites orders ${new Date().toISOString().slice(0, 10)}.csv`;
@@ -790,12 +792,12 @@
         <p class="hint" id="bEx"></p>
         <p class="err" id="e11"></p><button class="btn" id="b11">Save big orders</button></form></div>
 
-      <div class="box"><h3>Kiswahili for customers</h3><form class="form" id="swF" novalidate>
-        <p class="hint">Customers can switch the site between English and Kiswahili (at the bottom of the site and in Help).
-          Please first check the Kiswahili words with someone you trust: open the preview, look through the menu, cart and checkout, and tell Claude what to change.</p>
-        <a class="btn light" href="/?lang=sw" target="_blank">Preview the site in Kiswahili</a>
-        <label class="check"><input type="checkbox" id="swOn" ${s.swOn ? "checked" : ""}> Show the English / Kiswahili switch to customers</label>
-        <p class="err" id="e14"></p><button class="btn" id="b14">Save</button></form></div>
+      <div class="box"><h3>Rewards</h3><form class="form" id="rwF" novalidate>
+        <p class="hint">Rewards come off the food on the customer's next order, by themselves at checkout (one reward per order, on top of a discount code).
+          Orders count when they are delivered. Friends count when their first order, made from the customer's share link, is delivered.</p>
+        ${rewardBox("ro", "Loyal customers", "delivered orders", s.orderReward)}
+        ${rewardBox("rf", "Sharing with friends", "friends who order with the customer's link", s.refReward)}
+        <p class="err" id="e14"></p><button class="btn" id="b14">Save rewards</button></form></div>
 
       <div class="box"><h3>Share Tuye Bites</h3><form class="form" id="shareF" novalidate>
         <p class="hint">Customers can share your site on WhatsApp (from Help, My orders and after ordering). Choose a discount code their friends get,
@@ -837,10 +839,10 @@
         <div class="pol-preview hidden" id="polPreview"></div></div>
 
       <div class="box"><h3>Backup</h3>
-        <p class="hint">Download everything (menu, settings, team, orders, customers, discount codes and history) as one file to keep on your computer.
+        <p class="hint">Download everything (menu, settings, team, orders, customers and discount codes) as one file to keep on your computer.
           Do it once a week. Photos stay online and are not in the file. Keep the file private: it has customers' phone numbers.</p>
         <p class="err" id="e12"></p><button class="btn plum" id="b12">Download everything</button></div>
-      <div class="box"><h3>Activity history</h3><p class="hint">Who did what. Newest first.</p><div class="act-list" id="act"><p class="hint">Loading...</p></div></div>`;
+`;
 
     let logo, hero;
     $("#hf").onchange = async e => {
@@ -885,7 +887,8 @@
       sel.insertAdjacentHTML("beforeend", discounts.filter(d => d.active).map(d => `<option value="${esc(d.code)}"${d.code === s.shareCode ? " selected" : ""}>${esc(d.code)} (${d.kind === "percent" ? d.value + "% off" : money(d.value) + " off"}${d.firstOnly ? ", first order" : ""})</option>`).join(""));
     }).catch(() => {});
     $("#shareF").onsubmit = e => { e.preventDefault(); save($("#b15"), $("#e15"), { shareCode: $("#shCode").value }, "Share setting saved"); };
-    $("#swF").onsubmit = e => { e.preventDefault(); save($("#b14"), $("#e14"), { swOn: $("#swOn").checked }, "Kiswahili setting saved"); };
+    const readReward = k => ({ on: $(`#${k}On`).checked, every: $(`#${k}Every`).value, kind: $(`#${k}Kind`).value, value: $(`#${k}Val`).value, repeat: $(`#${k}Rep`).checked });
+    $("#rwF").onsubmit = e => { e.preventDefault(); save($("#b14"), $("#e14"), { orderReward: readReward("ro"), refReward: readReward("rf") }, "Rewards saved"); };
     $("#loyF").onsubmit = e => { e.preventDefault(); save($("#b8"), $("#e8"), { loyaltyEvery: $("#le").value }, "Loyalty reward saved"); };
     loadDiscounts();
     // Hot Deals: every row is one food with its own price and time; new rows go at the bottom, nothing is replaced
@@ -951,10 +954,15 @@
       a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 3000);
       toast("Backup downloaded. Keep it in a safe folder.");
     });
-    Api.activity().then(r => {
-      $("#act").innerHTML = r.activity.slice(0, 200).map(a => `<div><b>${esc(a.action)}</b>${a.detail ? " - " + esc(a.detail) : ""}<br>
-        <small>${new Date(a.at).toLocaleString("en-KE", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}${a.who ? " | " + esc(a.who) : ""}</small></div>`).join("") || `<p class="hint">Nothing yet.</p>`;
-    }).catch(e => { $("#act").textContent = e.message; });
+  }
+  // One reward in Settings: on/off, after how many, how much off, once or every time
+  function rewardBox(k, title, what, x) {
+    x = x || { on: false, every: 10, kind: "percent", value: 10, repeat: true };
+    return `<div class="reward-edit"><label class="check"><input type="checkbox" id="${k}On" ${x.on ? "checked" : ""}> <b>${title}</b></label>
+      <div class="two"><label>After how many ${what} <input id="${k}Every" type="number" min="2" inputmode="numeric" value="${x.every}"></label>
+        <label>Reward <span class="rowi"><select id="${k}Kind" style="max-width:110px"><option value="percent"${x.kind === "percent" ? " selected" : ""}>% off</option><option value="amount"${x.kind === "amount" ? " selected" : ""}>KES off</option></select>
+          <input id="${k}Val" type="number" min="1" inputmode="numeric" value="${x.value}"></span></label></div>
+      <label class="check"><input type="checkbox" id="${k}Rep" ${x.repeat ? "checked" : ""}> Again every time (at ${x.every}, ${x.every * 2}, ${x.every * 3} ...), not only once</label></div>`;
   }
   async function loadDiscounts() {
     let list;
@@ -1054,11 +1062,13 @@
   async function alertsReminder() {
     const box = $("#alertsTip");
     if (!box || !pushSupported() || await alertsOn()) return;
+    // the page may have been drawn again while checking: only fill the box still on screen
+    if (!box.isConnected) return;
     try { if (sessionStorage.getItem("tb_alert_tip") === "no") return; } catch (e) {}
     box.innerHTML = `<div class="alert info tip"><span>Get new-order alerts on this phone, even when it is locked.</span>
       <button class="btn small green" id="tipOn">Turn on</button><button class="x" id="tipX" aria-label="Hide">&times;</button></div>`;
-    $("#tipOn").onclick = () => busy($("#tipOn"), null, async () => { await turnOnAlerts(); box.innerHTML = ""; toast("Alerts are on. A test alert is on its way."); });
-    $("#tipX").onclick = () => { try { sessionStorage.setItem("tb_alert_tip", "no"); } catch (e) {} box.innerHTML = ""; };
+    $("#tipOn", box).onclick = () => busy($("#tipOn", box), null, async () => { await turnOnAlerts(); box.innerHTML = ""; toast("Alerts are on. A test alert is on its way."); });
+    $("#tipX", box).onclick = () => { try { sessionStorage.setItem("tb_alert_tip", "no"); } catch (e) {} box.innerHTML = ""; };
   }
 
   // ---------- my account ----------

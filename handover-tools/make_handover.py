@@ -106,8 +106,8 @@ p("A food ordering website for <b>Wote town</b>. Tuye Bites is the owner's own b
   "fast-food hotels in Wote and delivers it with their own riders. Customers choose food on the website, <b>pay first</b> "
   "on the owner's M-Pesa <b>Till</b>, type the M-Pesa code, and an admin checks the payment. Then a rider takes the food "
   "to the customer. Customers never make an account.")
-p("It works on any phone browser and can be installed like an app (Add to Home screen). Everything is in English; "
-  "Kiswahili is built in and switched on by an admin when the owner approves the wording.")
+p("It works on any phone browser and can be installed like an app (Add to Home screen). Everything is in English "
+  "(the Kiswahili switch was removed on 30 Oct 2026 at the owner's request).")
 
 h2("How to work with this owner")
 bullets([
@@ -158,12 +158,19 @@ bullets([
     "confirm screen, \"Leave checkout?\" check, Remember my details / Not you? Clear.",
     "After ordering: WhatsApp message button, order updates on the phone, install card, share with a friend's code.",
     "Phones: bottom bar (Menu, Hot Deals, My orders, Help). The <b>top My orders bar shows only orders in progress</b>; "
-    "the bottom My orders shows all orders of the last 2 weeks. \"Your usual\" (order the last food again).",
-    "Works offline with the last menu, small photos to save data, new version notice, Kiswahili (when switched on).",
+    "the bottom My orders shows <b>every order placed on that phone</b> (newest 200), totals spent, reward progress and a "
+    "<b>Receipt</b> button (view, PDF, print) for each paid order. \"Your usual\" (order the last food again).",
+    "<b>Rewards</b> (Settings, Rewards): after N delivered orders (default 10) and after N friends order with the customer's own "
+    "share link (?ref=CODE, default 10), the next order gets % or KES off the food, once or every time. One reward per order, "
+    "on top of a discount code. Friends count when their first order is delivered; cancelled orders give the reward back.",
+    "Works offline with the last menu, small photos to save data, new version notice.",
 ])
 h2("Order page (/t/...)")
 bullets([
-    "Status steps, delivery countdown, rider name while on the way, receipt (till-roll PDF, view, print) once paid.",
+    "Status steps, delivery countdown, rider name while on the way (the rider's phone number is <b>not</b> shown to customers), "
+    "receipt (till-roll PDF, view, print) once paid.",
+    "<b>Cancel my order</b> until the rider leaves: within 5 minutes of ordering a full refund, after that 50%. Admins get an "
+    "alert and the order card shows the amount to send back. The rule is always on the Privacy and refunds page.",
     "Rating 1 to 5 stars with a comment after delivery. About <b>10 minutes after delivery</b> the customer's phone gets "
     "a reminder to rate (only phones that turned on order updates; once per order).",
     "Order again, loyalty dots (free delivery every Nth delivered order).",
@@ -180,8 +187,9 @@ table([
                 "average rating and comments, busy hours, Excel download, summary to WhatsApp."],
     ["Team", "Add admins and riders, rider pay, switch off a login."],
     ["Settings", "Shop details (till, WhatsApp, logo, welcome picture), hours, delivery time, busy mode, late minutes, "
-                 "rider pay, Hot Deals, discount codes, big orders, Share Tuye Bites code, Kiswahili, loyalty, delivery "
-                 "areas, food groups, phone alerts, account, privacy and refunds wording, backup, activity history."],
+                 "rider pay, Hot Deals, discount codes, big orders, rewards (10 orders / 10 friends), Share Tuye Bites code, loyalty, delivery "
+                 "areas, food groups, phone alerts, account, privacy and refunds wording, backup. (No activity history: "
+                 "it was switched off and deleted on 30 Oct 2026.)"],
 ], [28, 148])
 p("Phone alerts (Web Push) go to admins for every new order, new M-Pesa code and <b>every new rating</b> "
   "(1 or 2 stars say \"please check\"); riders get an alert for each new delivery.")
@@ -224,7 +232,7 @@ table([
     ["public/api.js", "Shared browser code: API calls, helpers, logos, order keys, phone updates, APP_VERSION"],
     ["public/style.css", "All styles (brand colours)"],
     ["public/receipt.js", "Receipt drawing and PDF (html2canvas 1.4.1 and jsPDF 2.5.1 from jsdelivr)"],
-    ["public/lang.js", "Kiswahili: swaps words on screen (word list), off until Settings switches it on; preview /?lang=sw"],
+    ["public/lang.js", "Old Kiswahili word list, no longer used by any page (can be deleted)"],
     ["public/sw.js, manifest.webmanifest", "Installable app, offline files, phone alerts"],
     ["public/version.json", "Must match APP_VERSION in api.js (new version notice)"],
     ["lib/app.mjs", "The whole back office: /api/... and /f/... (menu, orders, logins, reports, settings, phone alerts)"],
@@ -235,7 +243,7 @@ table([
 ], [62, 114])
 bullets([
     "Node.js (ES modules). Packages: @libsql/client, bcryptjs. No build step.",
-    "Tables (made and updated by themselves): items, images, settings, users, orders, activity, blocked, discounts, "
+    "Tables (made and updated by themselves): items, images, settings, users, orders, ref_codes, blocked, discounts, "
     "push_subs, customer_push, limits. New columns are added through the ADDED list at the top of lib/app.mjs.",
     "Logins: phone number and password (bcrypt), signed tokens with SESSION_SECRET, lockout after wrong tries.",
     "Phone alerts are written by hand (VAPID ES256 and aes128gcm with node:crypto); keys are made by themselves and kept in settings.",
@@ -276,7 +284,7 @@ bullets([
     "Settings: real till number and till name, WhatsApp, delivery areas and fees, hours, delivery time, rider pay, privacy and refunds wording.",
     "Add the menu with photos and buying prices; add riders in Team.",
     "Turn on phone alerts on the owner's and riders' phones; do a real small-money test order from start to receipt.",
-    "Look at the Kiswahili preview (/?lang=sw) and switch it on in Settings if happy; choose a Share Tuye Bites code.",
+    "Check Settings, Rewards (10 orders / 10 friends, how much off); choose a Share Tuye Bites code.",
 ])
 h2("Not yet tested on real phones")
 bullets([

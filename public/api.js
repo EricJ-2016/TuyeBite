@@ -37,6 +37,9 @@ window.Api = (() => {
     newCode: (token, mpesaCode) => api("track/" + encodeURIComponent(token) + "/code", { method: "POST", body: { mpesaCode }, extra: orderKeyHeader(token) }),
     orderPush: (token, sub) => api("track/" + encodeURIComponent(token) + "/push", { method: "POST", body: sub, extra: orderKeyHeader(token) }),
     orderUnpush: (token, endpoint) => api("track/" + encodeURIComponent(token) + "/unpush", { method: "POST", body: { endpoint }, extra: orderKeyHeader(token) }),
+    cancelOrder: (token, reason) => api("track/" + encodeURIComponent(token) + "/cancel", { method: "POST", body: { reason }, extra: orderKeyHeader(token) }),
+    // All of this phone's orders in one go: [{ token, key }]
+    mine: list => post("mine", { orders: list }),
     rate: (token, stars, comment) => api("track/" + encodeURIComponent(token) + "/rate", { method: "POST", body: { stars, comment }, extra: orderKeyHeader(token) }),
 
     // ---------- logins ----------
@@ -66,7 +69,6 @@ window.Api = (() => {
     report: (from, to) => api(`report?from=${from}&to=${to}`),
     customers: () => api("customers"),
     block: (phone, blocked, reason) => post("customers/" + encodeURIComponent(phone) + "/block", { blocked, reason }),
-    activity: () => api("activity"),
     // The backup file, downloaded with the admin's login
     async backup() {
       const res = await fetch("/api/backup", { headers: { authorization: "Bearer " + getToken() } });
@@ -100,8 +102,8 @@ window.OrderKeys = (() => {
     set(token, key, remember = true) {
       const st = remember ? localStorage : sessionStorage, all = read(st);
       all[token] = key;
-      // keep the newest 20 orders only
-      write(st, Object.fromEntries(Object.entries(all).slice(-20)));
+      // keep the newest 200 orders (every order stays in "My orders")
+      write(st, Object.fromEntries(Object.entries(all).slice(-200)));
     }
   };
 })();
@@ -137,7 +139,7 @@ window.OrderUpdates = (() => {
 
 // "Not you? Clear": forget the name, number, directions, recent orders, order keys and cart on this phone
 window.forgetMe = () => {
-  for (const k of ["tb_me", "tb_orders", "tb_keys", "tb_cart"]) {
+  for (const k of ["tb_me", "tb_orders", "tb_keys", "tb_cart", "tb_refcode", "tb_rewards"]) {
     try { localStorage.removeItem(k); sessionStorage.removeItem(k); } catch (e) {}
   }
 };
@@ -164,7 +166,7 @@ window.policyHtml = (text, s = {}) => {
 
 // ---------- "A new version is ready" ----------
 // Change APP_VERSION here and in version.json together when uploading a new version.
-window.APP_VERSION = "2026-10-24.2";
+window.APP_VERSION = "2026-10-30.1";
 (() => {
   let shown = false;
   async function check() {

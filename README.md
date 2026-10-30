@@ -22,8 +22,11 @@ Everyone logs in with a phone number and password. The main admin is created onc
 - **Order privacy:** order pages open only from the secret link on the phone that ordered, or with the last 4 digits of the order's phone number; details are hidden 3 days after delivery.
 - **Menu:** food groups, choices and extras, up to 8 photos per food, "finished for today" switch, buying price and hotel (private), "ordered today" / "viewing now" numbers to encourage customers (never counted in sales).
 - **Selling:** Hot Deals (each food with its own price, start, end and optional quantity), discount codes, loyalty free delivery, order for later, big-order fee and maximum items, busy mode, delivery areas and fees, opening hours.
-- **Admin:** customers list and blocking fake-order numbers, reports (profit after buying cost and rider pay, best sellers, hotels, riders, ratings), end-of-day summary on WhatsApp, Excel download, backup download, activity history, phone alerts for new orders (Web Push).
-- **Customers' phones:** installable like an app (`manifest.webmanifest`, `sw.js`), bottom bar, My orders, "Your usual", order updates on the phone, works offline with the last menu, small photos to save data, Share with a friend's code, "new version" notice, English / Kiswahili (`public/lang.js`, switched on by an admin), "Remember my details" and "Not you? Clear".
+- **Admin:** customers list and blocking fake-order numbers, reports (profit after buying cost and rider pay, best sellers, hotels, riders, ratings, rewards, refunds), end-of-day summary on WhatsApp, Excel download, backup download, phone alerts for new orders (Web Push). No activity history is kept.
+- **Customers' phones:** installable like an app (`manifest.webmanifest`, `sw.js`), bottom bar, My orders, "Your usual", order updates on the phone, works offline with the last menu, small photos to save data, Share with a friend's code and the customer's own share link, "new version" notice, "Remember my details" and "Not you? Clear".
+- **Rewards:** after 10 delivered orders, and after 10 friends order with the customer's share link (`/?ref=CODE`), the next order gets money off the food (amounts in Settings, Rewards).
+- **Cancelling:** customers can cancel on their order page until the rider leaves: full refund within 5 minutes of ordering, 50% after that. The rider's phone number is not shown to customers.
+- **My orders:** every order on the customer's phone, with a receipt (view, PDF, print) for each paid order.
 
 ## Testing on this computer
 
@@ -41,7 +44,7 @@ The `data` folder is never uploaded to GitHub.
 | `netlify/functions/api.mjs` | Netlify Functions | Connects the back office to Turso |
 | `dev-server.mjs` | This computer | Runs everything locally with a test database |
 
-Tables (created and updated automatically): `items`, `images`, `settings`, `users`, `orders`, `activity`, `blocked`, `discounts`, `push_subs`, `customer_push`, `limits`.
+Tables (created and updated automatically): `items`, `images`, `settings`, `users`, `orders`, `ref_codes`, `blocked`, `discounts`, `push_subs`, `customer_push`, `limits`.
 Photos are stored in the database (`images`), shrunk in the browser before upload. The phone-alert keys are made automatically and kept in `settings`.
 
 ## Netlify environment variables (when it goes online)

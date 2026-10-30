@@ -77,9 +77,6 @@
 .ogroup .rowi select { width: auto; margin: 0; }
 .check { display: flex; align-items: center; gap: 8px; font-weight: 600; }
 .check input { width: auto; margin: 0; transform: scale(1.2); accent-color: var(--green); }
-.act-list { font-size: .9rem; }
-.act-list div { padding: 8px 0; border-bottom: 1px solid var(--line); }
-.act-list small { color: var(--muted); }
 .logo-edit { display: flex; align-items: center; gap: 12px; }
 .logo-edit .logo { width: 64px; height: 64px; border-radius: 50%; overflow: hidden; }
 .logo-edit .logo img, .logo-edit .logo svg { width: 100%; height: 100%; object-fit: cover; }
@@ -197,3 +194,6 @@
 @media (max-width: 520px) { .admin-brand .head-logo { height: 48px; } .admin-brand small { display: block; } }
 /* The tab bar sits right under the (taller) logo header */
 .admin .nav { top: var(--adminHeadH, 100px); }
+
+/* Rewards in Settings */
+.reward-edit { border: 1.5px solid var(--line); border-radius: 12px; padding: 10px 12px; display: grid; gap: 10px; }

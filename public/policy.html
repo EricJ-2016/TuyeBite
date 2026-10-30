@@ -9,9 +9,8 @@
 <link rel="icon" type="image/png" href="/favicon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Poppins:wght@700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/style.css?v=38">
-<script src="/lang.js?v=3"></script>
-<script src="/api.js?v=16"></script>
+<link rel="stylesheet" href="/style.css?v=39">
+<script src="/api.js?v=17"></script>
 </head>
 <body>
 <header class="top">
@@ -40,7 +39,7 @@
 (async () => {
   $("#logo").innerHTML = FULL_LOGO;
   let settings = {};
-  try { settings = (await Api.shop()).settings; I18N.check(settings); $("#logo").innerHTML = headerLogo(settings); $("#waBtn").href = waLink(settings.whatsapp, "Hello Tuye Bites, "); } catch (e) {}
+  try { settings = (await Api.shop()).settings; $("#logo").innerHTML = headerLogo(settings); $("#waBtn").href = waLink(settings.whatsapp, "Hello Tuye Bites, "); } catch (e) {}
   try {
     // The wording the admin saved in Settings (or the original one)
     const p = await Api.policy();

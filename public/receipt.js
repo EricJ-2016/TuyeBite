@@ -39,6 +39,7 @@ window.Receipt = (() => {
     <div class="rc-tot">
       <span>Food</span><b>${money(o.foodTotal)}</b>
       ${o.discount ? `<span>Discount${o.discountCode ? " (" + esc(o.discountCode) + ")" : ""}</span><b>- ${money(o.discount)}</b>` : ""}
+      ${o.reward ? `<span>Reward${o.rewardKind === "referral" ? " (friends)" : " (loyal customer)"}</span><b>- ${money(o.reward)}</b>` : ""}
       <span>Delivery: ${esc(o.area)}</span><b>${o.freeDelivery ? "FREE" : money(o.deliveryFee)}</b>
       ${o.bigFee ? `<span>Big order</span><b>${money(o.bigFee)}</b>` : ""}
       <span class="big">TOTAL</span><b class="big">${money(o.total)}</b>
@@ -50,6 +51,7 @@ window.Receipt = (() => {
     ${o.deliveredAt ? `<p class="rc-note">Delivered on ${fmtDate(o.deliveredAt)}</p>`
       : ["confirmed", "on_the_way"].includes(o.status) ? `<p class="rc-note">Delivery: ${o.status === "on_the_way" ? "on the way" : "being prepared"}${o.etaAt ? ", expected by " + new Date(o.etaAt).toLocaleTimeString("en-KE", { hour: "numeric", minute: "2-digit" }) : ""}</p>` : ""}
     ${o.status === "cancelled" ? `<p class="rc-note">Cancelled${o.cancelledAt ? " on " + fmtDate(o.cancelledAt) : ""}: ${esc(o.cancelReason)}</p>` : ""}
+    ${o.status === "cancelled" && o.refundAmount ? `<p class="rc-note">Refund: ${money(o.refundAmount)}${o.refundAmount < o.total ? " (50%)" : ""}</p>` : ""}
     ${o.note ? `<p class="rc-note">Note: ${esc(o.note)}</p>` : ""}
     <p class="rc-thanks">Thank you for ordering from Tuye Bites.<br>Let's eat!</p>
   </div>`;

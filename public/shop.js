@@ -93,19 +93,23 @@
     renderOrdersBar();
   }
 
-  // ---------- My orders: this phone's recent orders with their live status ----------
-  const myOrderList = () => store.get("tb_orders", []).filter(o => Date.now() - o.at < 14 * 864e5);
+  // ---------- My orders: every order placed on this phone, with live status and receipts ----------
+  const myOrderList = () => store.get("tb_orders", []);
   const STAGE = { new: ["Checking payment", "wait"], payment_problem: ["Check your M-Pesa code", "bad"], confirmed: ["Paid, being prepared", "go"],
     on_the_way: ["On the way", "go"], delivered: ["Delivered", "done"], cancelled: ["Cancelled", "off"] };
   let myCache = {};
+  // One request for all of them; also brings this customer's share code and reward progress
   async function fetchMine() {
     const list = myOrderList();
-    const got = await Promise.all(list.map(o => Api.track(o.token).then(r => r.needPin ? null : r.order).catch(() => null)));
-    myCache = Object.fromEntries(list.map((o, i) => [o.token, got[i]]));
+    if (!list.length) return list;
+    const r = await Api.mine(list.map(o => ({ token: o.token, key: OrderKeys.get(o.token) })));
+    myCache = Object.fromEntries(r.orders.map(o => [o.token, o]));
+    if (r.me) { store.set("tb_refcode", r.me.refCode); store.set("tb_rewards", r.me); }
     return list;
   }
   const LIVE = ["new", "payment_problem", "confirmed", "on_the_way"];
-  const isLive = o => myCache[o.token] && !myCache[o.token].expired && LIVE.includes(myCache[o.token].status);
+  const isLive = o => myCache[o.token] && LIVE.includes(myCache[o.token].status);
+  const hasReceipt = o => ["confirmed", "on_the_way", "delivered"].includes(o.status) || (o.status === "cancelled" && o.paidAt);
   // Top bar: only orders still in progress. The bottom bar "My orders" has them all.
   async function renderOrdersBar() {
     const bar = $("#ordersBar"), list = myOrderList();
@@ -141,29 +145,65 @@
       <button type="button" class="btn green small" id="usualBtn">Order again</button>`;
     $("#usualBtn").onclick = () => orderAgain(last);
   }
+  // Progress towards the rewards (10 orders, 10 friends)
+  function rewardsCard() {
+    const me = store.get("tb_rewards", null);
+    if (!me) return "";
+    const part = (x, what) => !x ? "" : `<div class="rw-row"><b>${x.ready ? `Ready: ${esc(x.text)} on your next order` : `${x.done} ${what}`}</b>
+      ${x.ready ? "" : x.left ? `<small>${x.left} more and you get ${esc(x.text)}.</small>` : `<small>Reward already used.</small>`}
+      <div class="rw-bar"><i style="width:${x.ready ? 100 : Math.round(((x.every - (x.left || x.every)) / x.every) * 100)}%"></i></div></div>`;
+    const html = part(me.orders, me.orders && me.orders.done === 1 ? "delivered order" : "delivered orders")
+      + part(me.referral, me.referral && me.referral.done === 1 ? "friend ordered with your link" : "friends ordered with your link");
+    return html ? `<div class="rewards-card"><h3>Your rewards</h3>${html}</div>` : "";
+  }
   async function openMyOrders(onlyLive) {
     onlyLive = onlyLive === true;
     const el = sheet(`<div class="head"><h2>${onlyLive ? "Orders in progress" : "My orders"}</h2><button class="x" aria-label="Close">&times;</button></div><div id="myList"><p class="empty">Loading your orders...</p></div>`);
-    await fetchMine().catch(() => {});
+    let failed = false;
+    await fetchMine().catch(() => { failed = true; });
     const all = myOrderList(), list = onlyLive ? all.filter(isLive) : all;
-    $("#myList", el).innerHTML = (list.length ? list.map(x => {
+    const got = all.map(x => myCache[x.token]).filter(Boolean), paid = got.filter(o => o.status === "delivered");
+    $("#myList", el).innerHTML = (failed ? `<p class="alert bad">Could not load your orders. Check your internet.</p>` : "")
+      + (!onlyLive && got.length ? `<div class="mo-sum"><div><b>${got.length}</b><small>order${got.length === 1 ? "" : "s"}</small></div>
+        <div><b>${paid.length}</b><small>delivered</small></div><div><b>${money(paid.reduce((a, o) => a + o.total, 0))}</b><small>spent</small></div></div>` : "")
+      + (!onlyLive ? rewardsCard() : "")
+      + (list.length ? list.map(x => {
       const o = myCache[x.token];
       if (!o) return `<div class="mo"><div class="mo-h"><b>${esc(x.no)}</b><small>${timeAgo(x.at)}</small></div><a class="btn small light" href="/t/${esc(x.token)}">Open order</a></div>`;
-      const [label, kind] = o.expired ? ["Delivered", "done"] : STAGE[o.status] || [o.status, "wait"];
+      const [label, kind] = STAGE[o.status] || [o.status, "wait"];
       const foods = o.items ? o.items.map(l => `${l.qty} x ${l.name}`).join(", ") : "";
       return `<div class="mo" data-t="${esc(x.token)}"><div class="mo-h"><b>${esc(o.no)}</b><span class="mo-st ${kind}">${esc(label)}</span></div>
-        <small class="mo-when">${timeAgo(o.at)}${o.total ? " | " + money(o.total) : ""}</small>
+        <small class="mo-when">${new Date(o.at).toLocaleString("en-KE", { day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" })} | ${money(o.total)}</small>
         ${foods ? `<p class="mo-foods">${esc(foods)}</p>` : ""}
-        <div class="mo-btns"><a class="btn small plum" href="/t/${esc(x.token)}">${["confirmed", "on_the_way", "delivered"].includes(o.status) && !o.expired ? "Track and receipt" : "Open order"}</a>
+        <div class="mo-btns"><a class="btn small plum" href="/t/${esc(x.token)}">${LIVE.includes(o.status) ? "Track order" : "Open order"}</a>
+          ${hasReceipt(o) ? `<button class="btn small light" data-rc>Receipt</button>` : ""}
           ${o.items ? `<button class="btn small green" data-again>Order again</button>` : ""}</div></div>`;
     }).join("") : `<p class="empty">${onlyLive ? "No orders in progress right now." : "No orders on this phone yet."}</p>`)
       + (onlyLive && all.length > list.length ? `<button type="button" class="btn line wide" id="seeAll">See all my orders (${all.length})</button>` : "");
     if ($("#seeAll", el)) $("#seeAll", el).onclick = () => openMyOrders();
     $$("[data-again]", el).forEach(b => b.onclick = () => orderAgain(myCache[b.closest(".mo").dataset.t]));
-    if (!onlyLive && list.length && settings.shareCode) {
-      $("#myList", el).insertAdjacentHTML("beforeend", `<div class="share-card"><b>Enjoying Tuye Bites?</b><span>Share with a friend: they get code <b>${esc(settings.shareCode)}</b> on their first order.</span><button type="button" class="btn green small" id="shareMine">Share</button></div>`);
+    $$("[data-rc]", el).forEach(b => b.onclick = () => openReceipt(myCache[b.closest(".mo").dataset.t]));
+    if (!onlyLive && list.length && (settings.shareCode || refOn())) {
+      $("#myList", el).insertAdjacentHTML("beforeend", shareCard("shareMine"));
       $("#shareMine", el).onclick = shareApp;
     }
+  }
+  // The receipt of one order: view, download as PDF or print (the same slip the shop sends)
+  function openReceipt(o) {
+    if (!o) return;
+    const rs = { logo: settings.logo, whatsapp: settings.whatsapp, till: settings.till, tillName: settings.tillName };
+    Receipt.loadLibs().catch(() => {});
+    const el = sheet(`<div class="head"><h2>Receipt ${esc(o.no)}</h2><button class="x" aria-label="Close">&times;</button></div>
+      <div class="rc-wrap">${Receipt.html(o, rs)}</div>
+      <div class="rc-actions"><button class="btn green" id="rcPdf">Download PDF</button><button class="btn light" id="rcPrint">Print</button>
+        <button class="btn light" id="rcBack">Back to my orders</button></div>`);
+    $("#rcPdf", el).onclick = async () => {
+      const b = $("#rcPdf", el); b.disabled = true; b.textContent = "Making PDF...";
+      try { Receipt.download(await Receipt.pdf(o, rs)); toast("Receipt downloaded"); } catch (e) { toast(e.message, true); }
+      b.disabled = false; b.textContent = "Download PDF";
+    };
+    $("#rcPrint", el).onclick = () => Receipt.print(o, rs);
+    $("#rcBack", el).onclick = () => openMyOrders();
   }
   // Puts the same foods and choices back in the cart
   function orderAgain(o) {
@@ -183,11 +223,28 @@
     if (added < o.items.length) toast("Some foods from that order are finished for today.");
   }
 
-  // ---------- share Tuye Bites: the friend gets the discount code the owner chose ----------
+  // ---------- share Tuye Bites: the friend gets the discount code the owner chose, and the link carries this customer's own code ----------
+  const myRef = () => store.get("tb_refcode", "");
+  const refUrl = base => myRef() ? base + (base.includes("?") ? "&" : "?") + "ref=" + encodeURIComponent(myRef()) : base;
+  const ruleText = x => x.kind === "percent" ? `${x.value}% off the food` : `${money(x.value)} off the food`;
+  const refOn = () => settings.refReward && settings.refReward.on;
+  function shareCard(id) {
+    const rr = settings.refReward, me = store.get("tb_rewards", null);
+    const friends = me && me.referral ? me.referral.done : 0;
+    return `<div class="share-card"><b>Share Tuye Bites</b><span>${settings.shareCode ? `Your friend gets code <b>${esc(settings.shareCode)}</b> for a discount on their first order.` : "Tell a friend about us on WhatsApp."}
+      ${refOn() ? `${myRef() ? "" : "After your first order you get your own share link. "}When <b>${rr.every}</b> friends order with your link, you get <b>${esc(ruleText(rr))}</b>.${myRef() && friends ? ` So far: <b>${friends}</b>.` : ""}` : ""}</span>
+      <button type="button" class="btn green small" id="${id}">Share</button></div>`;
+  }
+  function rewardsHelp() {
+    const o = settings.orderReward, r = settings.refReward, out = [];
+    if (o && o.on) out.push(`After every ${o.every} delivered orders${o.repeat ? "" : " (once)"}: ${ruleText(o)} on your next order.`);
+    if (r && r.on) out.push(`When ${r.every} friends order with your share link${r.repeat ? "" : " (once)"}: ${ruleText(r)} on your next order.`);
+    return out.length ? `<div><b>Rewards</b><span>${esc(out.join(" "))}</span></div>` : "";
+  }
   async function shareApp() {
     const code = settings.shareCode;
     const text = `Order hot fast food in Wote on Tuye Bites, delivered to your door.${code ? ` Use code ${code} for a discount on your first order.` : ""}`;
-    const url = location.origin + "/";
+    const url = refUrl(location.origin + "/");
     if (navigator.share) { try { await navigator.share({ title: "Tuye Bites", text, url }); return; } catch (e) { if (e.name === "AbortError") return; } }
     window.open(waLink("", text + " " + url), "_blank");
   }
@@ -202,12 +259,11 @@
         <div><b>When we are open</b><span>${settings.mode === "closed" ? "Closed for now" : settings.mode === "open" ? "Open now" : `Every day, ${t(settings.open)} to ${t(settings.close)}`}</span></div>
         <div><b>Where we deliver</b><span>${settings.deliveryAreas.map(a => `${esc(a.name)} (${money(a.fee)})`).join(", ")}</span></div>
         <div><b>How to pay</b><span>On M-Pesa Till ${esc(settings.till)}, before we deliver.</span></div>
+        <div><b>Cancelling</b><span>Cancel on your order page before the rider leaves. Within ${settings.fullRefundMin || 5} minutes of ordering we refund all your payment; after ${settings.fullRefundMin || 5} minutes we refund 50%.</span></div>
+        ${rewardsHelp()}
         <div><b>Rules</b><span><a href="/policy.html">Privacy and refunds</a></span></div>
       </div>
-      <div class="share-card"><b>Share Tuye Bites</b><span>${settings.shareCode ? `Your friend gets code <b>${esc(settings.shareCode)}</b> for a discount on their first order.` : "Tell a friend about us on WhatsApp."}</span>
-        <button type="button" class="btn green small" id="shareHelp">Share</button></div>
-      ${I18N.canSwitch(settings) ? `<div class="help-lang"><b>Language</b><div class="lang-btns"><button type="button" class="chip${I18N.lang() === "en" ? " on" : ""}" data-lang="en">English</button><button type="button" class="chip${I18N.lang() === "sw" ? " on" : ""}" data-lang="sw">Kiswahili</button></div></div>` : ""}`);
-    $$("[data-lang]", el).forEach(b => b.onclick = () => { I18N.set(b.dataset.lang); closeSheet(); renderShop(); });
+      ${shareCard("shareHelp")}`);
     $("#shareHelp", el).onclick = shareApp;
   }
 
@@ -225,9 +281,7 @@
         <p>${settings.mode === "closed" ? "Closed for now" : settings.mode === "open" ? "Open now" : `Every day, ${t(settings.open)} to ${t(settings.close)}`}</p>
         <p>Delivering in Wote town: ${settings.deliveryAreas.map(a => esc(a.name)).join(", ")}</p></div>
       </div>
-      <div class="foot-bottom"><a href="/policy.html">Privacy and refunds</a>
-        ${I18N.canSwitch(settings) ? `<span class="foot-lang"><button type="button" data-lang="en">English</button> | <button type="button" data-lang="sw">Kiswahili</button></span>` : ""}<span>Tuye Bites, Wote</span></div>`;
-    $$("#siteFoot [data-lang]").forEach(b => b.onclick = () => { I18N.set(b.dataset.lang); renderShop(); });
+      <div class="foot-bottom"><a href="/policy.html">Privacy and refunds</a><span>Tuye Bites, Wote</span></div>`;
   }
 
   // ---------- Hot Deals: like a flash sale, every food with its own price, time and stock ----------
@@ -446,7 +500,7 @@
     wireGallery(el);
     // Phones share straight to WhatsApp, Status and others; computers open WhatsApp
     $("#shareIt", el).onclick = async () => {
-      const url = shareLink(it.id), text = `${it.name} - ${money(it.price)} on Tuye Bites. Order here:`;
+      const url = refUrl(shareLink(it.id)), text = `${it.name} - ${money(it.price)} on Tuye Bites. Order here:`;
       if (navigator.share) { try { await navigator.share({ title: it.name, text, url }); return; } catch (e) { if (e.name === "AbortError") return; } }
       window.open(waLink("", text + " " + url), "_blank");
     };
@@ -535,7 +589,7 @@
     const me = store.get("tb_me", {}), food = foodTotal();
     const areas = settings.deliveryAreas;
     // What the discount code and loyalty reward give, checked with the shop before ordering
-    let perk = { discount: 0, code: "", text: "", freeDelivery: false };
+    let perk = { discount: 0, code: "", text: "", freeDelivery: false, reward: 0, rewardText: "" };
     const el = sheet(`<div class="head"><h2>Checkout</h2><button class="x" aria-label="Close">&times;</button></div>
       ${me.customer ? `<p class="hint notme">Ordering as <b>${esc(me.customer)}</b>. <button type="button" class="linkbtn" id="notMe">Not you? Clear</button></p>` : ""}
       <form class="form" id="co" novalidate>
@@ -552,6 +606,7 @@
         <p class="alert good hidden" id="perkMsg"></p>
         <div class="totals"><div><span>Food</span><span>${money(food)}</span></div>
           <div class="hidden" id="discRow"><span>Discount</span><span id="discAmt"></span></div>
+          <div class="hidden" id="rwRow"><span>Reward</span><span id="rwAmt"></span></div>
           <div><span>Delivery</span><span id="fee"></span></div>
           ${big ? `<div><span>Big order (${itemCount()} items, ${settings.bigIncluded} included)</span><span>+ ${money(big)}</span></div>` : ""}
           <div class="big"><span>Total to pay</span><span id="total"></span></div></div>
@@ -589,9 +644,12 @@
       $("#fee", el).textContent = perk.freeDelivery ? "FREE" : money(fee);
       $("#discRow", el).classList.toggle("hidden", !perk.discount);
       $("#discAmt", el).textContent = "- " + money(perk.discount);
-      $("#total", el).textContent = $("#payAmt", el).textContent = money(food - perk.discount + fee + big);
-      $("#perkMsg", el).textContent = perk.freeDelivery ? "This order has FREE delivery as a thank you for your loyalty." : "";
-      $("#perkMsg", el).classList.toggle("hidden", !perk.freeDelivery);
+      $("#rwRow", el).classList.toggle("hidden", !perk.reward);
+      $("#rwAmt", el).textContent = "- " + money(perk.reward);
+      $("#total", el).textContent = $("#payAmt", el).textContent = money(food - perk.discount - perk.reward + fee + big);
+      const msgs = [perk.reward ? perk.rewardText + ". Thank you!" : "", perk.freeDelivery ? "This order has FREE delivery as a thank you for your loyalty." : ""].filter(Boolean);
+      $("#perkMsg", el).textContent = msgs.join(" ");
+      $("#perkMsg", el).classList.toggle("hidden", !msgs.length);
       const later = $("#cWhen", el).value;
       $("#timeNote", el).innerHTML = later ? `We will deliver <b>${esc(slotText(Number(later)).toLowerCase())}</b>.`
         : settings.busy ? `<span class="busy-note">We are very busy right now. Delivery may take ${esc(settings.busyTime)}.</span>`
@@ -610,6 +668,8 @@
       } catch (err) {
         if (n !== asked) return;
         perk = { ...perk, discount: 0, code: "" };
+        // the reward still counts without a code: ask again for it alone
+        if (code) { try { const r2 = await Api.perks(phone.length >= 10 ? phone : "", "", food); if (n === asked) perk = r2; } catch (e) {} }
         if (!quiet) $("#discMsg", el).innerHTML = `<span class="err">${esc(err.message)}</span>`;
       }
       showFee();
@@ -619,6 +679,7 @@
     $("#applyDisc", el).onclick = () => refreshPerks($("#cDisc", el).value.trim());
     $("#cDisc", el).onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); refreshPerks($("#cDisc", el).value.trim()); } };
     $("#cPhone", el).onchange = () => refreshPerks(perk.code, true);
+    $("#cPhone", el).oninput = () => { if ($("#cPhone", el).value.replace(/\D/g, "").length >= 10) refreshPerks(perk.code, true); };
     showFee();
     if (me.phone) refreshPerks("", true);
     if ($("#notMe", el)) $("#notMe", el).onclick = () => {
@@ -635,23 +696,24 @@
     }
     // The last look before the order is sent
     function showConfirm() {
-      const a = area(), fee = perk.freeDelivery ? 0 : a.fee, later = Number($("#cWhen", el).value) || 0;
+      const a = area(), fee = perk.freeDelivery ? 0 : a.fee, later = Number($("#cWhen", el).value) || 0, pay = food - perk.discount - perk.reward + fee + big;
       $("#co", el).classList.add("hidden");
       $("#confirmBox", el).classList.remove("hidden");
       $("#confirmBox", el).innerHTML = `<h3>Please confirm your order</h3>
         <div class="cf-sec">${lines.map(l => `<div class="cf-line"><span>${l.qty} x ${esc(l.item.name)}${l.extra ? `<small>${esc(l.extra)}</small>` : ""}</span><b>${money(l.unit * l.qty)}</b></div>`).join("")}</div>
         <div class="totals"><div><span>Food</span><span>${money(food)}</span></div>
           ${perk.discount ? `<div><span>Discount (${esc(perk.code)})</span><span>- ${money(perk.discount)}</span></div>` : ""}
+          ${perk.reward ? `<div><span>Reward</span><span>- ${money(perk.reward)}</span></div>` : ""}
           <div><span>Delivery</span><span>${perk.freeDelivery ? "FREE" : money(fee)}</span></div>
           ${big ? `<div><span>Big order (${itemCount()} items)</span><span>+ ${money(big)}</span></div>` : ""}
-          <div class="big"><span>Total paid</span><span>${money(food - perk.discount + fee + big)}</span></div></div>
+          <div class="big"><span>Total paid</span><span>${money(pay)}</span></div></div>
         <div class="cf-sec cf-info">
           <div><small>Deliver to</small><b>${esc(a.name)}</b> - ${esc($("#cDir", el).value.trim())}</div>
           <div><small>When</small><b>${later ? esc(slotText(later)) : "As soon as possible"}</b></div>
           <div><small>Name and phone</small><b>${esc($("#cName", el).value.trim())}</b>, ${esc($("#cPhone", el).value.trim())}</div>
           <div><small>M-Pesa code</small><b class="cf-code">${esc($("#cCode", el).value.replace(/\s/g, "").toUpperCase())}</b></div>
           ${$("#cNote", el).value.trim() ? `<div><small>Note</small>${esc($("#cNote", el).value.trim())}</div>` : ""}</div>
-        <p class="hint">Make sure you paid <b>${money(food - perk.discount + fee + big)}</b> to Till <b>${esc(settings.till)}</b> and the M-Pesa code is correct.</p>
+        <p class="hint">Make sure you paid <b>${money(pay)}</b> to Till <b>${esc(settings.till)}</b> and the M-Pesa code is correct.</p>
         <p class="err" id="cfErr"></p>
         <div class="bottom"><button type="button" class="btn light" id="backBtn">Go back</button><button type="button" class="btn green" id="confirmBtn">Confirm order</button></div>`;
       $("#backBtn", el).onclick = backToForm;
@@ -674,7 +736,7 @@
       const data = {
         customer: $("#cName", el).value, phone: $("#cPhone", el).value, area: $("#cArea", el).value,
         directions: $("#cDir", el).value, note: $("#cNote", el).value, mpesaCode: $("#cCode", el).value,
-        deliverAt: Number($("#cWhen", el).value) || null, discountCode: perk.code || "",
+        deliverAt: Number($("#cWhen", el).value) || null, discountCode: perk.code || "", ref: store.get("tb_ref", ""),
         items: lines.map(l => ({ id: l.id, qty: l.qty, choices: l.choices }))
       };
       const btn = $("#confirmBtn", el);
@@ -684,9 +746,12 @@
         const { order } = await Api.placeOrder(data);
         const remember = $("#cRemember", el).checked;
         store.set("tb_remember", remember);
+        try { localStorage.removeItem("tb_ref"); } catch (e) {}
         if (remember) {
           store.set("tb_me", { customer: data.customer, phone: data.phone, area: data.area, directions: data.directions });
-          store.set("tb_orders", [{ no: order.no, token: order.token, at: Date.now() }, ...store.get("tb_orders", [])].slice(0, 10));
+          // Every order stays in "My orders" (the newest 200)
+          store.set("tb_orders", [{ no: order.no, token: order.token, at: Date.now() }, ...store.get("tb_orders", [])].slice(0, 200));
+          if (order.refCode) store.set("tb_refcode", order.refCode);
         } else forgetMe();
         // This phone may open the order page without the 4-digit check (until the browser closes, if not remembered)
         OrderKeys.set(order.token, order.key, remember);
@@ -699,11 +764,12 @@
     }
   }
 
+  const order_refHint = o => o.refCode ? `When ${settings.refReward.every} friends order with your share link, you get ${esc(ruleText(settings.refReward))}.` : "";
   function showDone(o) {
     const link = location.origin + "/t/" + o.token;
     const text = [`New order ${o.no}`, `Name: ${o.customer}`, `Phone: ${o.phone}`, `Deliver to: ${o.area} - ${o.directions}`, "",
       ...o.items.map(l => `${l.qty} x ${l.name}${l.choices.length ? " (" + choiceText(l) + ")" : ""} = ${money(l.total)}`), "",
-      `Food: ${money(o.foodTotal)}`, o.discount ? `Discount (${o.discountCode}): - ${money(o.discount)}` : null,
+      `Food: ${money(o.foodTotal)}`, o.discount ? `Discount (${o.discountCode}): - ${money(o.discount)}` : null, o.reward ? `Reward: - ${money(o.reward)}` : null,
       `Delivery: ${o.freeDelivery ? "FREE (loyalty reward)" : money(o.deliveryFee)}`, o.bigFee ? `Big order: + ${money(o.bigFee)}` : null, `Total paid: ${money(o.total)}`,
       o.deliverAt ? `Deliver: ${slotText(o.deliverAt)}` : null,
       `M-Pesa code: ${o.mpesaCode}`, o.note ? `Note: ${o.note}` : "", "", `Track: ${link}`].filter(x => x !== null).filter((x, i, a) => x !== "" || a[i - 1] !== "").join("\n");
@@ -718,7 +784,8 @@
         ${!standalone() && (installEvent || /iphone|ipad|ipod/i.test(navigator.userAgent)) ? `<div class="inst-card"><b>Install Tuye Bites</b>
           <span>Follow your order and order faster next time, right from your home screen.</span>
           ${installEvent ? `<button class="btn amber small" id="instNow">Install the app</button>` : `<small>On iPhone: tap the Share button, then "Add to Home Screen".</small>`}</div>` : ""}
-        ${settings.shareCode ? `<button class="btn line wide" id="shareDone" style="margin-top:10px">Share Tuye Bites with a friend</button>` : ""}</div>`);
+        ${settings.shareCode || refOn() ? `<button class="btn line wide" id="shareDone" style="margin-top:10px">Share Tuye Bites with a friend</button>` : ""}
+        ${refOn() && order_refHint(o) ? `<p class="hint">${order_refHint(o)}</p>` : ""}</div>`);
     if ($("#instNow", el)) $("#instNow", el).onclick = async () => {
       installEvent.prompt();
       try { await installEvent.userChoice; } catch (e) {}
@@ -799,7 +866,6 @@
   async function load() {
     try {
       ({ items, settings } = await Api.shop());
-      I18N.check(settings);
       store.set("tb_menu", { at: Date.now(), items, settings });
       offline(false);
       renderShop();
@@ -819,11 +885,19 @@
   window.addEventListener("online", () => load());
   window.addEventListener("offline", () => { if (settings) offline(true); });
   store.set("tb_visits", store.get("tb_visits", 0) + 1);
+  // Opened from a friend's share link (?ref=CODE): remembered until this phone places its first order
+  (() => {
+    const m = /[?&]ref=([A-Za-z0-9]{4,12})/.exec(location.search);
+    if (!m) return;
+    if (m[1].toUpperCase() !== store.get("tb_refcode", "") && !myOrderList().length) store.set("tb_ref", m[1].toUpperCase());
+    history.replaceState(null, "", location.pathname + location.hash);
+  })();
   // A shared food link (/f/<food>) opens that food straight away
   load().then(() => {
     const m = /food=([^&]+)/.exec(location.hash);
     const it = m && byId(decodeURIComponent(m[1]));
     if (it) { history.replaceState(null, "", location.pathname); openFood(it); }
+    else if (location.hash === "#orders") { history.replaceState(null, "", location.pathname); openMyOrders(); }
     showInstall();
   });
   // Keep the menu fresh (finished foods, opening hours) while the page stays open

@@ -9,10 +9,9 @@
 <link rel="icon" type="image/png" href="/favicon.png">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&family=Poppins:wght@700;800&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="/style.css?v=38">
-<script src="/lang.js?v=3"></script>
-<script src="/api.js?v=16"></script>
-<script src="/receipt.js?v=2"></script>
+<link rel="stylesheet" href="/style.css?v=39">
+<script src="/api.js?v=17"></script>
+<script src="/receipt.js?v=3"></script>
 <link rel="manifest" href="/manifest.webmanifest">
 </head>
 <body>
@@ -60,7 +59,7 @@
       } catch (err) { $("#pinErr").textContent = err.message; }
     };
   }
-  // Three days after delivery or cancellation only a short note is shown
+  // (older pages) only a short note
   function renderExpired(o) {
     $("#page").innerHTML = `<div class="card"><h2>Order <span style="color:var(--red)">${esc(o.no)}</span></h2>
       <div class="alert ${o.status === "delivered" ? "good" : "bad"}">${o.status === "delivered"
@@ -90,7 +89,8 @@
         Please check your M-Pesa message and type the correct code. You should have paid <b>${money(o.total)}</b> to Till <b>${esc(settings.till)}</b>.
         <form class="form" id="codeForm" style="margin-top:10px"><input id="code" maxlength="12" placeholder="e.g. QJK7Y2B4XZ" style="text-transform:uppercase;letter-spacing:2px;font-weight:700">
         <p class="err" id="codeErr"></p><button class="btn">Send the code</button></form></div>`;
-    else if (o.status === "cancelled") top = `<div class="alert bad">This order was cancelled. ${esc(o.cancelReason)}</div>`;
+    else if (o.status === "cancelled") top = `<div class="alert bad">This order was cancelled. ${esc(o.cancelReason)}
+        ${o.refundAmount ? `<br><br>We will send <b>${money(o.refundAmount)}</b> back to the M-Pesa number you paid from${o.refundAmount < o.total ? " (50% of your payment, because you cancelled after " + (settings.fullRefundMin || 5) + " minutes)" : ""}.` : ""}</div>`;
     else if (o.status === "delivered") top = `<div class="alert good">Delivered at ${clock(o.deliveredAt)}. Thank you for ordering from Tuye Bites.</div>
         ${o.rating ? `<p class="rated">You rated this order <span class="stars">${"&#9733;".repeat(o.rating)}<s>${"&#9733;".repeat(5 - o.rating)}</s></span></p>`
           : `<form class="rate" id="rateForm"><b>How was your food and delivery?</b>
@@ -99,8 +99,8 @@
             <p class="err" id="rateErr"></p><button class="btn green">Send rating</button></form>`}`;
     // Orders for later only count down in the last 2 hours; before that the chosen time is shown above
     else if (["confirmed", "on_the_way"].includes(o.status) && o.etaAt && !(o.deliverAt && o.etaAt - Date.now() > 2 * 36e5)) top = `<div class="eta"><small>Your food arrives in about</small><b id="etaLeft"></b><small>by ${clock(o.etaAt)}</small></div>`;
-    if (o.status === "on_the_way" && o.riderName) top += `<div class="alert info">${esc(o.riderName)} is bringing your food.
-        ${o.riderPhone ? `<br><a class="btn small green" style="margin-top:8px" href="tel:${esc(o.riderPhone)}">Call ${esc(o.riderName)}</a>` : ""}</div>`;
+    // The rider's number is not shown: customers call or WhatsApp the shop
+    if (o.status === "on_the_way" && o.riderName) top += `<div class="alert info">${esc(o.riderName)} is bringing your food. For any help, call or WhatsApp us on <b>${esc(settings.whatsapp)}</b>.</div>`;
 
     $("#page").innerHTML = `
       <div class="card"><h2>Order <span style="color:var(--red)">${esc(o.no)}</span></h2>
@@ -111,8 +111,8 @@
           `<li class="${i < pos || o.status === "delivered" ? "done" : i === pos ? "now" : ""}">${t}
             <small>${i <= pos && at[k] ? clock(at[k]) + " | " : ""}${esc(d)}</small></li>`).join("")}</ul>`}
       </div>
-      ${["confirmed", "on_the_way", "delivered"].includes(o.status) ? `<div class="card rc-card"><h3>Your receipt</h3>
-        <p class="hint">Your payment is confirmed. Download your receipt to keep: the details on this page are hidden 3 days after delivery.</p>
+      ${["confirmed", "on_the_way", "delivered"].includes(o.status) || (o.status === "cancelled" && o.paidAt) ? `<div class="card rc-card"><h3>Your receipt</h3>
+        <p class="hint">${o.status === "cancelled" ? "This order was paid and then cancelled." : "Your payment is confirmed."} Your receipts stay in <a href="/#orders">My orders</a> on this phone.</p>
         <div class="rc-actions"><button class="btn green" id="rcPdf">Download PDF</button><button class="btn light" id="rcView">View receipt</button>
           <button class="btn light" id="rcPrint">Print</button></div>
         <div class="hidden" id="receiptBox" style="margin-top:14px"></div></div>` : ""}
@@ -121,11 +121,13 @@
         ${o.items.map(l => `<div class="line"><div class="t"><b>${l.qty} x ${esc(l.name)}</b>${l.choices.length ? `<small>${esc(choiceText(l))}</small>` : ""}</div><b>${money(l.total)}</b></div>`).join("")}
         <div class="totals"><div><span>Food</span><span>${money(o.foodTotal)}</span></div>
           ${o.discount ? `<div><span>Discount (${esc(o.discountCode)})</span><span>- ${money(o.discount)}</span></div>` : ""}
+          ${o.reward ? `<div><span>Reward (${o.rewardKind === "referral" ? "friends" : "loyal customer"})</span><span>- ${money(o.reward)}</span></div>` : ""}
           <div><span>Delivery</span><span>${o.freeDelivery ? "FREE (loyalty reward)" : money(o.deliveryFee)}</span></div>
           ${o.bigFee ? `<div><span>Big order</span><span>+ ${money(o.bigFee)}</span></div>` : ""}
           <div class="big"><span>Total</span><span>${money(o.total)}</span></div></div>
-        <p class="hint">M-Pesa code: <b>${esc(o.mpesaCode)}</b><br>Deliver to: ${esc(o.area)} - ${esc(o.directions)}</p>
+        <p class="hint">M-Pesa code: <b>${esc(o.mpesaCode)}</b><br>Deliver to: ${esc(o.area)}${o.directions ? " - " + esc(o.directions) : ""}</p>
       </div>
+      ${["new", "payment_problem", "confirmed"].includes(o.status) ? cancelCard(o) : ""}
       ${o.loyalty && o.status === "delivered" ? `<div class="card loyal">${o.loyalty.left === 0
         ? `<b>Your next order has FREE delivery.</b> Thank you for ordering with us.`
         : `<b>${o.loyalty.left} more order${o.loyalty.left === 1 ? "" : "s"}</b> and your next delivery is FREE.`}
@@ -135,6 +137,7 @@
       <p class="hint" style="text-align:center;margin-top:12px">This page updates by itself.</p>`;
 
     tickEta(o);
+    wireCancel(o);
     // Order again: the same foods and choices go back into the cart on the menu page
     $("#again").onclick = () => {
       const cart = o.items.map(l => {
@@ -187,11 +190,40 @@
       catch (err) { $("#codeErr").textContent = err.message; }
     };
   }
+  // ---------- the customer cancels: all the money back in the first 5 minutes, half after that ----------
+  const fullMin = () => settings.fullRefundMin || 5;
+  const refundNow = o => Date.now() - o.at <= fullMin() * 6e4 ? o.total : Math.round(o.total / 2);
+  function cancelCard(o) {
+    const full = Date.now() - o.at <= fullMin() * 6e4, left = Math.max(0, Math.ceil((o.at + fullMin() * 6e4 - Date.now()) / 6e4));
+    return `<div class="card cancel-card" id="cancelCard"><h3>Need to cancel?</h3>
+      <p class="hint">${full ? `Cancel in the next <b>${left} minute${left === 1 ? "" : "s"}</b> and we refund <b>all</b> your payment. After that, we refund 50%.`
+        : `It is more than ${fullMin()} minutes since you ordered, so we refund <b>50%</b> of your payment (${money(refundNow(o))}).`}
+        You cannot cancel once the food is on the way.</p>
+      <button type="button" class="btn line" id="cancelBtn">Cancel my order</button>
+      <div class="hidden" id="cancelAsk"><p><b>Cancel order ${esc(o.no)}?</b> We will send <b id="cancelAmt">${money(refundNow(o))}</b> back to the M-Pesa number you paid from${o.status === "confirmed" ? "" : ", once we find your payment"}.</p>
+        <input id="cancelWhy" maxlength="150" placeholder="Why? (optional)">
+        <p class="err" id="cancelErr"></p>
+        <div class="leave-btns"><button type="button" class="btn light" id="cancelNo">Keep my order</button><button type="button" class="btn" id="cancelYes">Yes, cancel</button></div></div></div>`;
+  }
+  function wireCancel(o) {
+    if (!$("#cancelBtn")) return;
+    $("#cancelBtn").onclick = () => { $("#cancelAmt").textContent = money(refundNow(o)); $("#cancelAsk").classList.remove("hidden"); $("#cancelBtn").classList.add("hidden"); };
+    $("#cancelNo").onclick = () => { $("#cancelAsk").classList.add("hidden"); $("#cancelBtn").classList.remove("hidden"); };
+    $("#cancelYes").onclick = async () => {
+      const b = $("#cancelYes"); b.disabled = true; b.textContent = "Cancelling...";
+      try { const r = await Api.cancelOrder(token, $("#cancelWhy").value); settings = r.settings; last = ""; show(r.order); window.scrollTo({ top: 0, behavior: "smooth" }); }
+      catch (e) { $("#cancelErr").textContent = e.message; b.disabled = false; b.textContent = "Yes, cancel"; }
+    };
+  }
   // Time left until the minutes given when the payment was confirmed, counting down every second
   let etaOrder = null;
   function tickEta(o) {
     if (o) etaOrder = o;
     const el = $("#etaLeft");
+    // the cancel box changes from "all back" to "50% back" after 5 minutes
+    if (etaOrder && $("#cancelCard") && $("#cancelAsk").classList.contains("hidden") && Date.now() - etaOrder.at > fullMin() * 6e4 && /all/.test($("#cancelCard .hint").textContent.slice(0, 60))) {
+      $("#cancelCard").outerHTML = cancelCard(etaOrder); wireCancel(etaOrder);
+    }
     if (!el || !etaOrder || !etaOrder.etaAt) return;
     const secs = Math.round((etaOrder.etaAt - Date.now()) / 1000);
     const h = Math.floor(secs / 3600), m = Math.floor(secs / 60) % 60, sec = String(secs % 60).padStart(2, "0");
@@ -227,7 +259,6 @@
     try {
       const r = await Api.track(token);
       settings = r.settings;
-      I18N.check(settings);
       $("#logo").innerHTML = headerLogo(settings);
       if (r.needPin) askPin(r.no); else show(r.order);
     } catch (e) {
@@ -236,7 +267,7 @@
   }
   $("#logo").innerHTML = FULL_LOGO;
   load();
-  setInterval(() => { if (!document.hidden && !(document.activeElement && ["code", "rateNote", "pin"].includes(document.activeElement.id))) load(); }, 20000);
+  setInterval(() => { if (!document.hidden && !(document.activeElement && ["code", "rateNote", "pin", "cancelWhy"].includes(document.activeElement.id))) load(); }, 20000);
 })();
 </script>
 </body>

@@ -558,7 +558,7 @@ body::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-even
 .mo-st.go { background: #eef8de; color: #3f6b00; } .mo-st.done { background: #e6f6df; color: var(--green); } .mo-st.off { background: #eee; color: #555; }
 .mo-when { color: var(--muted); }
 .mo-foods { margin: 0; font-size: .88rem; }
-.mo-btns { display: flex; gap: 8px; margin-top: 4px; }
+.mo-btns { display: flex; gap: 8px; margin-top: 4px; flex-wrap: wrap; }
 
 .offline-bar { background: var(--ink); color: #fff; text-align: center; padding: 9px 16px; font-weight: 700; font-size: .88rem; }
 
@@ -586,9 +586,6 @@ body::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-even
 .help-list { display: grid; gap: 10px; }
 .help-list div { background: var(--soft); border-radius: 12px; padding: 10px 12px; display: grid; gap: 2px; }
 .help-list span { color: var(--muted); font-size: .9rem; }
-.help-lang { margin-top: 14px; display: grid; gap: 6px; }
-.lang-btns { display: flex; gap: 8px; }
-.foot-lang button { background: none; border: 0; color: var(--amber); font: inherit; font-weight: 700; cursor: pointer; padding: 0 2px; }
 /* Your usual */
 .usual { display: flex; align-items: center; gap: 12px; background: #fff; border-radius: 18px; padding: 10px 12px; margin: 14px 0 0; box-shadow: var(--shadow);
   border-left: 5px solid var(--green); }
@@ -619,3 +616,17 @@ body::before { content: ""; position: fixed; inset: 0; z-index: -1; pointer-even
   .flash-grid > * { scroll-snap-align: start; min-width: 0; }
   .swipe-hint { display: flex; }
 }
+
+/* ---------- My orders: totals, rewards ---------- */
+.mo-sum { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 12px; }
+.mo-sum div { background: var(--soft); border-radius: 12px; padding: 8px 10px; text-align: center; display: grid; }
+.mo-sum b { font-size: 1.05rem; } .mo-sum small { color: var(--muted); font-size: .78rem; }
+.rewards-card { background: linear-gradient(135deg, #fff3d9, #f1fae9); border: 2px solid var(--amber); border-radius: 14px; padding: 10px 12px; margin-bottom: 12px; display: grid; gap: 10px; }
+.rewards-card h3 { margin: 0; font-size: 1rem; }
+.rw-row { display: grid; gap: 3px; } .rw-row small { color: var(--muted); font-size: .85rem; }
+.rw-bar { height: 8px; border-radius: 99px; background: #fff; border: 1px solid var(--line); overflow: hidden; }
+.rw-bar i { display: block; height: 100%; background: var(--green); border-radius: 99px; }
+/* ---------- order page: cancel ---------- */
+.cancel-card .btn { margin-top: 6px; }
+.cancel-card input { margin: 8px 0 4px; }
+.cancel-card .leave-btns { display: flex; gap: 8px; flex-wrap: wrap; }

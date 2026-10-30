@@ -4,3 +4,4 @@ data/
 .netlify/
 *.log
 __pycache__/
+node-v*-win-x64/
