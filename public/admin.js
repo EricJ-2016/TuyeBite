@@ -814,6 +814,12 @@
         <button type="button" class="btn small light" id="addA">Add area</button>
         <p class="err" id="e3"></p><button class="btn" id="b3">Save delivery areas</button></form></div>
 
+      <div class="box"><h3>Import menu</h3>
+        <p class="hint">Add many foods at once from a menu file (with photos), for example "Tuye Bites menu to import.json".
+          Foods already on the menu (same name) are skipped, so it is safe to run again. New food groups are added by themselves.</p>
+        <label class="btn light" style="display:inline-flex">Choose menu file<input type="file" accept=".json,application/json" id="impF" hidden></label>
+        <p class="hint" id="impMsg"></p><p class="err" id="e16"></p></div>
+
       <div class="box"><h3>Food groups</h3><form class="form" id="catF" novalidate>
         <p class="hint">The groups customers see at the top of the menu, in this order.</p>
         <div class="rows" id="cats">${s.categories.map(catRow).join("")}</div>
@@ -946,6 +952,7 @@
     $("#page").addEventListener("click", e => { if (e.target.closest("[data-rm]")) e.target.closest(".rowi").remove(); });
     $("#areaF").onsubmit = e => { e.preventDefault();
       save($("#b3"), $("#e3"), { deliveryAreas: $$("#areas .rowi").map(r => ({ name: $("[data-an]", r).value, fee: $("[data-af]", r).value })) }, "Delivery areas saved"); };
+    $("#impF").onchange = e => importMenu(e.target.files[0]);
     $("#catF").onsubmit = e => { e.preventDefault(); save($("#b4"), $("#e4"), { categories: $$("#cats input").map(i => i.value) }, "Food groups saved"); };
     wireAccount(); wireAlerts(); wirePolicy();
     $("#b12").onclick = () => busy($("#b12"), $("#e12"), async () => {
@@ -954,6 +961,39 @@
       a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 3000);
       toast("Backup downloaded. Keep it in a safe folder.");
     });
+  }
+  // Import menu: a file of foods [{ name, category, price, description?, photo: { src, thumb } }], added one by one
+  async function importMenu(file) {
+    const msg = $("#impMsg"), err = $("#e16"), pick = $("#impF").closest("label");
+    err.textContent = "";
+    if (!file) return;
+    let foods;
+    try { foods = JSON.parse(await file.text()); if (!Array.isArray(foods)) throw 0; }
+    catch (e) { err.textContent = "That file is not a menu file."; return; }
+    pick.classList.add("hidden");
+    try {
+      const have = new Set((await Api.items()).items.map(i => i.name.toLowerCase()));
+      const todo = foods.filter(f => f && f.name && f.price && !have.has(String(f.name).toLowerCase()));
+      // the food groups first, so every food has its group
+      const cats = [...settings.categories];
+      for (const f of todo) if (!cats.some(c => c.toLowerCase() === String(f.category).toLowerCase())) cats.push(f.category);
+      if (cats.length !== settings.categories.length) settings = await Api.saveSettings({ categories: cats });
+      let n = 0;
+      const failed = [];
+      for (const f of todo) {
+        msg.textContent = `Adding ${n + 1} of ${todo.length}: ${f.name}...`;
+        try {
+          await Api.saveItem(null, { name: f.name, category: f.category, price: f.price, description: f.description || "", options: [], available: true,
+            photos: f.photo ? [{ src: f.photo.src, thumb: f.photo.thumb }] : [] });
+          n++;
+        } catch (e) { failed.push(`${f.name}: ${e.message}`); }
+      }
+      msg.innerHTML = `<b style="color:var(--green)">Done: ${n} foods added</b>, ${foods.length - todo.length} already on the menu.`;
+      if (failed.length) err.textContent = "Not added: " + failed.join(" | ");
+      toast(`${n} foods added to the menu`);
+    } catch (e) { err.textContent = e.message; }
+    pick.classList.remove("hidden");
+    $("#impF").value = "";
   }
   // One reward in Settings: on/off, after how many, how much off, once or every time
   function rewardBox(k, title, what, x) {
